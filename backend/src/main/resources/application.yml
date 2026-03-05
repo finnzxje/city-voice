@@ -64,7 +64,7 @@ app:
 
 logging:
   level:
-    com.cityvoice: INFO
+    com.cityvoice: DEBUG
     org.flywaydb: INFO
     org.springframework.security: INFO
 

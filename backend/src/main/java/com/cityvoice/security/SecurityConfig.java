@@ -1,5 +1,6 @@
 package com.cityvoice.security;
 
+import com.cityvoice.exception.SecurityExceptionHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final SecurityExceptionHandler securityExceptionHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -32,14 +34,16 @@ public class SecurityConfig {
                 // Stateless session — no HttpSession
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public auth endpoints
-                        .requestMatchers("/auth/**").permitAll()
-                        // Swagger UI and OpenAPI docs
+                        .requestMatchers("/auth/citizen/**", "/auth/staff/**", "/auth/refresh").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Require authentication for everything else
+                        // /auth/me and /auth/logout require a valid token
                         .anyRequest().authenticated())
                 // Register JWT filter before Spring's default auth filter
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Replace default 401/403 responses with structured JSON
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(securityExceptionHandler) // 401
+                        .accessDeniedHandler(securityExceptionHandler)); // 403
 
         return http.build();
     }
