@@ -2,6 +2,9 @@ spring:
   application:
     name: cityvoice
 
+  config:
+    import: optional:file:.env[.properties]  # loads backend/.env automatically
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:cityvoice}
     username: ${DB_USER:cityvoice}
@@ -10,7 +13,6 @@ spring:
 
   jpa:
     hibernate:
-      # Flyway owns the schema — Hibernate only validates
       ddl-auto: validate
     show-sql: false
     properties:
@@ -24,12 +26,45 @@ spring:
     baseline-on-migrate: false
     validate-on-migrate: true
 
+  # Gmail SMTP configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 server:
   port: 8080
   servlet:
     context-path: /api
 
+# Application-specific settings
+app:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:change-me-in-production-access-secret-32chars}
+    access-expiration-ms: 9000000        # 150 minutes
+    refresh-secret: ${JWT_REFRESH_SECRET:change-me-in-production-refresh-secret-32chars}
+    refresh-expiration-ms: 604800000    # 7 days
+
+  otp:
+    verification-expiration-minutes: 15  # Email verification OTP (registration)
+    login-expiration-minutes: 10          # Login OTP
+
+  admin:
+    email: ${ADMIN_EMAIL:admin@cityvoice.vn}
+    password: ${ADMIN_PASSWORD:Admin@123}
+    full-name: "System Administrator"
+
 logging:
   level:
     com.cityvoice: INFO
     org.flywaydb: INFO
+    org.springframework.security: INFO
+

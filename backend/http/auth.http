@@ -1,0 +1,210 @@
+### CityVoice – Auth API Tests
+### Compatible with: IntelliJ HTTP Client, VS Code REST Client
+### Base URL: http://localhost:8080/api
+
+@baseUrl = http://localhost:8080/api
+@adminEmail = admin@cityvoice.vn
+@adminPassword = Admin@123
+@citizenEmail = finnzxje@gmail.com
+@citizenPassword = Test@12345
+
+
+# ─── 1. STAFF / ADMIN LOGIN ─────────────────────────────────────────────────
+
+### 1a. Successful staff login (saves tokens globally)
+# @name adminLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("accessToken", response.body.accessToken);
+  client.global.set("refreshToken", response.body.refreshToken);
+  client.test("Login OK", () => client.assert(response.status === 200));
+  client.test("Has accessToken", () => client.assert(response.body.accessToken !== ""));
+%}
+
+###
+
+### 1b. Wrong password – expect 401
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "wrongpassword"
+}
+
+
+# ─── 2. CURRENT USER ──────────────────────────────────────────────────────────
+
+### 2a. GET /me (requires valid Bearer token from step 1a)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+###
+
+### 2b. GET /me without token – expect 403
+GET {{baseUrl}}/auth/me
+
+
+# ─── 3. TOKEN REFRESH + LOGOUT ───────────────────────────────────────────────
+
+### 3a. Refresh access token (rotates refresh token)
+# @name tokenRefresh
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+  client.global.set("accessToken", response.body.accessToken);
+  client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+###
+
+### 3b. Logout (revokes the current refresh token)
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+###
+
+### 3c. Refresh with revoked token – expect 401
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+# ─── 4. CITIZEN REGISTRATION FLOW ───────────────────────────────────────────
+
+### 4a. Register new citizen (sends verification OTP email)
+POST {{baseUrl}}/auth/citizen/register
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password": "{{citizenPassword}}",
+  "fullName": "Nguyen Van A",
+  "phoneNumber": "0901234567"
+}
+
+###
+
+### 4b. Resend verification OTP
+POST {{baseUrl}}/auth/citizen/resend-verification
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}"
+}
+
+###
+
+### 4c. Verify email OTP (replace 123456 with actual OTP from email)
+# @name verifyEmail
+POST {{baseUrl}}/auth/citizen/verify-email
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "otp": "123456"
+}
+
+###
+
+### 4d. Register duplicate email – expect 409
+POST {{baseUrl}}/auth/citizen/register
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password": "{{citizenPassword}}",
+  "fullName": "Duplicate User"
+}
+
+
+# ─── 5. CITIZEN LOGIN ────────────────────────────────────────────────────────
+
+### 5a. Citizen login with password
+# @name citizenPasswordLogin
+POST {{baseUrl}}/auth/citizen/login
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password": "{{citizenPassword}}"
+}
+
+> {%
+  client.global.set("citizenAccessToken", response.body.accessToken);
+  client.global.set("citizenRefreshToken", response.body.refreshToken);
+%}
+
+###
+
+### 5b. Citizen login before verification – expect 403
+POST {{baseUrl}}/auth/citizen/login
+Content-Type: application/json
+
+{
+  "email": "unverified@example.com",
+  "password": "Test@12345"
+}
+
+###
+
+### 5c. Request OTP login code
+POST {{baseUrl}}/auth/citizen/request-otp
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}"
+}
+
+###
+
+### 5d. Login with OTP (replace 654321 with actual OTP from email)
+# @name citizenOtpLogin
+POST {{baseUrl}}/auth/citizen/verify-otp
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "otp": "654321"
+}
+
+> {%
+  client.global.set("citizenAccessToken", response.body.accessToken);
+%}
+
+###
+
+### 5e. GET /me as citizen
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{citizenAccessToken}}
+
+###
+
+### 5f. Citizen using staff login endpoint – expect 403
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password": "{{citizenPassword}}"
+}
