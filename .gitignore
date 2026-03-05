@@ -11,11 +11,18 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 
 ### IDEs ###
+# IntelliJ IDEA
 .idea/
 *.iws
 *.iml
 *.ipr
+# VS Code
 .vscode/
+# Eclipse / Spring Tools Suite
+.classpath
+.project
+.factorypath
+.settings/
 
 ### Environment / Secrets ###
 .env

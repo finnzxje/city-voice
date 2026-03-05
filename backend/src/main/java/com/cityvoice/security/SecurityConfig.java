@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public auth endpoints
                         .requestMatchers("/auth/**").permitAll()
+                        // Swagger UI and OpenAPI docs
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         // Require authentication for everything else
                         .anyRequest().authenticated())
                 // Register JWT filter before Spring's default auth filter
