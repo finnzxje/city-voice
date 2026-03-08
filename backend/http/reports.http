@@ -1,0 +1,220 @@
+### CityVoice – Reports & Categories API Tests
+### Compatible with: IntelliJ HTTP Client (native), kulala.nvim (ignores > {% %} blocks)
+### Base URL: http://localhost:8080/api
+###
+### ⚠ SETUP ORDER:
+###   1. Run "0a. Admin Login"   → adminToken stored globally
+###   2. Run "0b. Citizen Login" → citizenToken stored globally
+###   3. Run tests in section order
+###
+### 📎 POST /reports (sections 2a–2e):
+###   Binary file uploads require curl -F. Provided as runnable shell commands.
+###   IntelliJ: run via Tools → HTTP Client → Run in terminal.
+###   kulala: yank command, run in terminal with :!
+###
+### NOTE: Sections 2–4 require a verified citizen account.
+###   Use auth.http §4 to register + verify first.
+
+@baseUrl = http://localhost:8080/api
+@adminEmail = admin@cityvoice.vn
+@adminPassword = Admin@123
+@citizenEmail = finnzxje@gmail.com
+@citizenPassword = Test@12345
+
+
+# ─── 0. TOKEN SETUP ──────────────────────────────────────────────────────────
+
+### 0a. Admin login (stores adminToken globally)
+# @name adminLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("adminToken", response.body.accessToken);
+  client.test("Login OK",       () => client.assert(response.status === 200));
+  client.test("Has accessToken",() => client.assert(response.body.accessToken !== ""));
+%}
+
+###
+
+### 0b. Citizen login (stores citizenToken globally)
+### ⚠ Requires a verified citizen account — use auth.http §4 first
+# @name citizenLogin
+POST {{baseUrl}}/auth/citizen/login
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password": "{{citizenPassword}}"
+}
+
+> {%
+  client.global.set("citizenToken", response.body.accessToken);
+  client.test("Login OK",       () => client.assert(response.status === 200));
+  client.test("Has accessToken",() => client.assert(response.body.accessToken !== ""));
+%}
+
+
+# ─── 1. CATEGORIES ───────────────────────────────────────────────────────────
+
+### 1a. List active categories – expect 200, non-empty array
+GET {{baseUrl}}/categories
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200",      () => client.assert(response.status === 200));
+  client.test("Returns array",   () => client.assert(Array.isArray(response.body)));
+  client.test("Has items",       () => client.assert(response.body.length > 0));
+  client.test("Has id/name/slug",() => {
+    const c = response.body[0];
+    client.assert(c.id   !== undefined);
+    client.assert(c.name !== undefined);
+    client.assert(c.slug !== undefined);
+  });
+  client.global.set("categoryId", response.body[0].id);
+%}
+
+###
+
+### 1b. No token → 401
+GET {{baseUrl}}/categories
+
+> {%
+  client.test("Status 401", () => client.assert(response.status === 401));
+%}
+
+
+# ─── 2. SUBMIT REPORT ────────────────────────────────────────────────────────
+# Binary file uploads cannot be sent reliably via raw .http multipart bodies.
+# Use the curl commands below — binary encoding is handled correctly by curl -F.
+#
+# Set CITIZEN_TOKEN / ADMIN_TOKEN in your shell first:
+#   export CITIZEN_TOKEN=$(cat /tmp/citizen_token.txt)   # or paste directly
+# ─────────────────────────────────────────────────────────────────────────────
+
+### 2a. CITIZEN – valid HCMC location → Expect: 201 Created
+### ↓ Run this in your terminal (replace $CITIZEN_TOKEN):
+# curl -s -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $CITIZEN_TOKEN" \
+#   -F "title=Pothole on Nguyen Hue Boulevard" \
+#   -F "description=Large pothole causing traffic disruption near Quan 1" \
+#   -F "categoryId=1" \
+#   -F "latitude=10.7769" \
+#   -F "longitude=106.7009" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+# → Copy `id` from response into {{reportId}} below
+
+###
+
+### 2b. ADMIN submits report → Expect: 403 Forbidden
+# curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" \
+#   -F "title=Admin test" -F "categoryId=1" \
+#   -F "latitude=10.7769" -F "longitude=106.7009" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg"
+
+###
+
+### 2c. CITIZEN – Hanoi coordinates (outside HCMC) → Expect: 400
+# curl -s -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $CITIZEN_TOKEN" \
+#   -F "title=Out of bounds" -F "categoryId=1" \
+#   -F "latitude=21.0" -F "longitude=105.8" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+
+###
+
+### 2d. Missing required fields → Expect: 400 with `errors` object
+# curl -s -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $CITIZEN_TOKEN" \
+#   -F "latitude=10.7769" | python3 -m json.tool
+
+###
+
+### 2e. Invalid categoryId=99999 → Expect: 400
+# curl -s -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $CITIZEN_TOKEN" \
+#   -F "title=Bad Category" -F "categoryId=99999" \
+#   -F "latitude=10.7769" -F "longitude=106.7009" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+
+
+# ─── 3. LIST OWN REPORTS ─────────────────────────────────────────────────────
+
+### 3a. CITIZEN lists their reports – expect 200
+GET {{baseUrl}}/reports/my
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200",    () => client.assert(response.status === 200));
+  client.test("Returns array", () => client.assert(Array.isArray(response.body)));
+%}
+
+###
+
+### 3b. ADMIN – citizen-only → expect 403
+GET {{baseUrl}}/reports/my
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 403", () => client.assert(response.status === 403));
+%}
+
+###
+
+### 3c. No token → 401
+GET {{baseUrl}}/reports/my
+
+> {%
+  client.test("Status 401", () => client.assert(response.status === 401));
+%}
+
+
+# ─── 4. GET REPORT BY ID ─────────────────────────────────────────────────────
+# ⚠ Run curl 2a first and paste the returned UUID into {{reportId}} below
+@reportId = d5ef065a-e18b-43f2-b23d-4190589bea6f
+
+### 4a. Owning CITIZEN fetches report – expect 200
+GET {{baseUrl}}/reports/{{reportId}}
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200",           () => client.assert(response.status === 200));
+  client.test("ID matches",           () => client.assert(response.body.id === client.global.get("reportId")));
+  client.test("Status newly_received",() => client.assert(response.body.currentStatus === "newly_received"));
+  client.test("Has imageUrl",         () => client.assert(!!response.body.incidentImageUrl));
+%}
+
+###
+
+### 4b. ADMIN fetches any report – expect 200
+GET {{baseUrl}}/reports/{{reportId}}
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+%}
+
+###
+
+### 4c. Non-existent UUID – expect 404
+GET {{baseUrl}}/reports/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 404", () => client.assert(response.status === 404));
+%}
+
+###
+
+### 4d. No token – expect 401
+GET {{baseUrl}}/reports/{{reportId}}
+
+> {%
+  client.test("Status 401", () => client.assert(response.status === 401));
+%}
