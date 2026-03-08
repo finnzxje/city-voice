@@ -73,6 +73,8 @@ services:
 
 volumes:
   pgdata:
-    driver: local
+    external: true
+    name: cityvoice_pgdata
   minio_data:
-    driver: local
+    external: true
+    name: cityvoice_minio_data
