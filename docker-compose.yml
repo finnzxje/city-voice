@@ -7,11 +7,11 @@ services:
       POSTGRES_USER: cityvoice
       POSTGRES_PASSWORD: cityvoice_dev
     ports:
-      - "5433:5432"
+      - "5433:5432" # External: 5433, Internal Docker network: 5432
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cityvoice -d cityvoice"]
+      test: [ "CMD-SHELL", "pg_isready -U cityvoice -d cityvoice" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,8 +21,8 @@ services:
     image: minio/minio:latest
     container_name: cityvoice-minio
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web console
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -30,11 +30,46 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: [ "CMD", "mc", "ready", "local" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cityvoice-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Database — uses Docker-internal service name "db" and internal port 5432
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: cityvoice
+      DB_USER: cityvoice
+      DB_PASSWORD: cityvoice_dev
+      # MinIO — uses Docker-internal service name "minio"
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: cityvoice-reports
+      # Mail (override for production)
+      MAIL_USERNAME: ${MAIL_USERNAME:-your-email@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-your-app-password}
+      # JWT secrets (override in production!)
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-in-production-access-secret-32chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-in-production-refresh-secret-32chars}
+      # Admin seed account
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cityvoice.vn}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@123}
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

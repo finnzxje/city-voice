@@ -1,0 +1,26 @@
+# Build artifacts
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# Logs
+*.log
+
+# Maven wrapper cache (keep .mvn/ but skip downloads cache)
+.mvn/repository/
+
+# Test files
+src/test/
+
+# Local env overrides
+.env
