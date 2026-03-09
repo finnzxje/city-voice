@@ -73,8 +73,6 @@ services:
 
 volumes:
   pgdata:
-    external: true
     name: cityvoice_pgdata
   minio_data:
-    external: true
     name: cityvoice_minio_data
