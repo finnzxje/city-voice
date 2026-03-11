@@ -49,7 +49,15 @@ export default function Login() {
 
   const handleVerifyOTP = async () => {
     const res = await AuthAPI.verifyOtpLogin({ email, otp });
-    await login(res.data);
+
+    await login(
+      {
+        accessToken: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
+      },
+      res.data.user,
+    );
+
     navigate("/");
   };
 
@@ -72,10 +80,7 @@ export default function Login() {
         }
       }
     } catch (err: any) {
-      if (
-        err.response?.status === 403 &&
-        err.response?.data?.message?.includes("verify")
-      ) {
+      if (err.response?.status === 403) {
         // Account inactive, redirect to verify email
         navigate("/verify-email", { state: { email } });
       } else {
