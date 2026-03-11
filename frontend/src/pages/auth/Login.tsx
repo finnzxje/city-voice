@@ -79,7 +79,7 @@ export default function Login() {
         // Account inactive, redirect to verify email
         navigate("/verify-email", { state: { email } });
       } else {
-        setError(err.response?.data?.message || "Đăng nhập thất bại.");
+        setError(err.response?.data?.title || "Đăng nhập thất bại.");
       }
     } finally {
       setLoading(false);
