@@ -18,23 +18,37 @@ CityVoice has two classes of users with distinct authentication flows:
 
 ---
 
+## API Response Structure
+
+All API responses follow a unified structure:
+
+```json
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": { ... }
+}
+```
+
+- `code`: Custom application status code (usually matches HTTP status).
+- `message`: Human-readable message in Vietnamese.
+- `data`: The actual payload. For error responses, this is `null`.
+
+---
+
 ## 1. Citizen Registration & Email Verification
 
 New citizens must verify their email before they can log in. A fresh account has `isActive: false` and all login attempts will be rejected until verification is complete.
 
-```
 POST /auth/citizen/register
-→ Account created (inactive)
-→ Verification OTP sent to email (valid for 15 minutes)
+→ returns: { "code": 201, "message": "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.", "data": null }
 
 POST /auth/citizen/verify-email   { email, otp }
-→ Account activated (isActive: true)
-→ Returns 200 OK
+→ returns: { "code": 200, "message": "Xác thực email thành công.", "data": null }
 
 # If OTP expired or lost:
 POST /auth/citizen/resend-verification  { email }
-→ Invalidates old OTP, sends a fresh one
-```
+→ returns: { "code": 200, "message": "Mã xác thực mới đã được gửi.", "data": null }
 
 **Flow diagram:**
 
@@ -55,29 +69,57 @@ Verified citizens have two login options. Both return the same token pair.
 ```
 POST /auth/citizen/login
 Body: { "email": "...", "password": "..." }
-→ Returns: { accessToken, refreshToken, tokenType, accessExpiresIn }
+→ Returns: 
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "tokenType": "Bearer",
+    "accessExpiresIn": 9000
+  }
+}
 ```
 
 ### Option B: OTP Login (passwordless)
 
 ```
 POST /auth/citizen/request-otp   { email }
-→ Login OTP sent to email (valid for 10 minutes)
+→ returns: { "code": 200, "message": "Mã OTP đã được gửi.", "data": null }
 
 POST /auth/citizen/verify-otp    { email, otp }
-→ Returns: { accessToken, refreshToken, tokenType, accessExpiresIn }
+→ Returns: 
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "tokenType": "Bearer",
+    "accessExpiresIn": 9000
+  }
+}
 ```
 
 ---
 
-## 3. Staff / Manager / Admin Login
-
-Internal users (staff, managers, admin) are created by an administrator and log in with a password only. There is no self-registration.
+### Staff / Manager / Admin Login
 
 ```
 POST /auth/staff/login
 Body: { "email": "...", "password": "..." }
-→ Returns: { accessToken, refreshToken, tokenType, accessExpiresIn }
+→ Returns: 
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "...",
+    "tokenType": "Bearer",
+    "accessExpiresIn": 9000
+  }
+}
 ```
 
 > **Default Admin** (created on first startup):  
@@ -105,7 +147,17 @@ Authorization: Bearer <accessToken>
 ```
 GET /auth/me
 Authorization: Bearer <accessToken>
-→ { id, email, fullName, role, isActive }
+→ {
+    "code": 200,
+    "message": "Thành công",
+    "data": {
+      "id": "...",
+      "email": "...",
+      "fullName": "...",
+      "role": "...",
+      "isActive": true
+    }
+  }
 ```
 
 ---
@@ -117,7 +169,15 @@ Access tokens expire in 150 minutes. Use the refresh token to get a new pair **w
 ```
 POST /auth/refresh
 Body: { "refreshToken": "..." }
-→ Returns a new { accessToken, refreshToken } pair
+→ Returns:
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "..."
+  }
+}
 ```
 
 > ⚠️ Store the new `refreshToken` from every response — the old one will no longer work.
@@ -132,7 +192,7 @@ Invalidates the refresh token so it cannot be used to generate new access tokens
 POST /auth/logout
 Authorization: Bearer <accessToken>
 Body: { "refreshToken": "..." }
-→ 200 OK
+→ { "code": 200, "message": "Đăng xuất thành công.", "data": null }
 ```
 
 ---
@@ -152,9 +212,20 @@ Role is embedded in the JWT payload and enforced server-side on each request. Yo
 
 ## Error Reference
 
+Error responses also use the `ApiResponse` structure with `data: null`:
+
+```json
+{
+  "code": 401,
+  "message": "Sai email hoặc mật khẩu.",
+  "data": null
+}
+```
+
 | HTTP Status | Meaning                                                |
 | ----------- | ------------------------------------------------------ |
 | `400`       | Validation error (missing or invalid fields)           |
 | `401`       | Wrong credentials, expired/invalid token, or wrong OTP |
 | `403`       | Account inactive (not verified) or insufficient role   |
 | `409`       | Email already registered                               |
+| `500`       | Internal Server Error                                  |

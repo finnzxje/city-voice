@@ -29,14 +29,18 @@ Authorization: Bearer <anyValidToken>
 ```
 **Returns:**
 ```json
-[
-  {
-    "id": 1,
-    "name": "Hư hỏng đường bộ",
-    "slug": "hu-hong-duong-bo",
-    "iconKey": "road_repair"
-  }
-]
+{
+  "code": 200,
+  "message": "Thành công",
+  "data": [
+    {
+      "id": 1,
+      "name": "Hư hỏng đường bộ",
+      "slug": "hu-hong-duong-bo",
+      "iconKey": "road_repair"
+    }
+  ]
+}
 ```
 
 ---
@@ -70,8 +74,10 @@ Content-Type: multipart/form-data
 6. **Audit:** A `StatusHistory` record is created logging the citizen's submission.
 
 ### Responses
-- **`201 Created`**: Report saved successfully. Returns report details including the `incidentImageUrl` and assigned `administrativeZoneName`.
-- **`400 Bad Request`**: Out of bounds (e.g., "Incident location is outside Ho Chi Minh City bounds"), invalid category, or bad multipart stream.
+- **`201 Created`**: Report saved successfully. 
+  - Body: `{ "code": 201, "message": "Báo cáo đã được gửi thành công.", "data": { ReportResponse } }`
+- **`400 Bad Request`**: Out of bounds, invalid category, or validation error.
+  - Body: `{ "code": 400, "message": "Lỗi xác thực dữ liệu.", "data": { "field": "error message" } }`
 - **`413 Payload Too Large`**: Image exceeds 10MB.
 - **`403 Forbidden`**: Admin/Staff tried to submit, or account is unverified.
 
@@ -79,14 +85,12 @@ Content-Type: multipart/form-data
 
 ## 3. Viewing Reports
 
-### 3a. Citizen viewing their own history
-
 A citizen can see a list of all reports they have ever submitted.
 
 ```http
 GET /reports/my
 Authorization: Bearer <citizenToken>
-→ Returns Array of ReportResponse objects
+→ { "code": 200, "message": "Thành công", "data": [ ...Array of ReportResponse... ] }
 ```
 
 ### 3b. Fetching a specific report details
@@ -100,16 +104,20 @@ Authorization: Bearer <validToken>
 **Returns:**
 ```json
 {
-  "id": "uuid-here",
-  "title": "Pothole on Nguyen Hue Boulevard",
-  "description": "Large pothole causing traffic disruption near Quan 1",
-  "categoryName": "Hư hỏng đường bộ",
-  "latitude": 10.7769,
-  "longitude": 106.7009,
-  "administrativeZoneName": "Quận 1",
-  "incidentImageUrl": "http://localhost:9000/cityvoice-reports/...",
-  "currentStatus": "newly_received",
-  "createdAt": "2026-03-08T12:00:00Z"
+  "code": 200,
+  "message": "Thành công",
+  "data": {
+    "id": "uuid-here",
+    "title": "Pothole on Nguyen Hue Boulevard",
+    "description": "Large pothole causing traffic disruption near Quan 1",
+    "categoryName": "Hư hỏng đường bộ",
+    "latitude": 10.7769,
+    "longitude": 106.7009,
+    "administrativeZoneName": "Quận 1",
+    "incidentImageUrl": "http://localhost:9000/cityvoice-reports/...",
+    "currentStatus": "newly_received",
+    "createdAt": "2026-03-08T12:00:00Z"
+  }
 }
 ```
 
