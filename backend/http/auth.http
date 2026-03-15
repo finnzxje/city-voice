@@ -22,10 +22,10 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("accessToken", response.body.accessToken);
-  client.global.set("refreshToken", response.body.refreshToken);
+  client.global.set("accessToken", response.body.data.accessToken);
+  client.global.set("refreshToken", response.body.data.refreshToken);
   client.test("Login OK", () => client.assert(response.status === 200));
-  client.test("Has accessToken", () => client.assert(response.body.accessToken !== ""));
+  client.test("Has accessToken", () => client.assert(response.body.data.accessToken !== ""));
 %}
 
 ###
@@ -64,8 +64,8 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("accessToken", response.body.accessToken);
-  client.global.set("refreshToken", response.body.refreshToken);
+  client.global.set("accessToken", response.body.data.accessToken);
+  client.global.set("refreshToken", response.body.data.refreshToken);
 %}
 
 ###
@@ -151,8 +151,8 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("citizenAccessToken", response.body.accessToken);
-  client.global.set("citizenRefreshToken", response.body.refreshToken);
+  client.global.set("citizenAccessToken", response.body.data.accessToken);
+  client.global.set("citizenRefreshToken", response.body.data.refreshToken);
 %}
 
 ###
@@ -189,7 +189,7 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("citizenAccessToken", response.body.accessToken);
+  client.global.set("citizenAccessToken", response.body.data.accessToken);
 %}
 
 ###

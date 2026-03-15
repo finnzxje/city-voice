@@ -35,9 +35,9 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("adminToken", response.body.accessToken);
+  client.global.set("adminToken", response.body.data.accessToken);
   client.test("Login OK",       () => client.assert(response.status === 200));
-  client.test("Has accessToken",() => client.assert(response.body.accessToken !== ""));
+  client.test("Has accessToken",() => client.assert(response.body.data.accessToken !== ""));
 %}
 
 ###
@@ -54,9 +54,9 @@ Content-Type: application/json
 }
 
 > {%
-  client.global.set("citizenToken", response.body.accessToken);
+  client.global.set("citizenToken", response.body.data.accessToken);
   client.test("Login OK",       () => client.assert(response.status === 200));
-  client.test("Has accessToken",() => client.assert(response.body.accessToken !== ""));
+  client.test("Has accessToken",() => client.assert(response.body.data.accessToken !== ""));
 %}
 
 
@@ -68,15 +68,15 @@ Authorization: Bearer {{adminToken}}
 
 > {%
   client.test("Status 200",      () => client.assert(response.status === 200));
-  client.test("Returns array",   () => client.assert(Array.isArray(response.body)));
-  client.test("Has items",       () => client.assert(response.body.length > 0));
+  client.test("Returns array",   () => client.assert(Array.isArray(response.body.data)));
+  client.test("Has items",       () => client.assert(response.body.data.length > 0));
   client.test("Has id/name/slug",() => {
-    const c = response.body[0];
+    const c = response.body.data[0];
     client.assert(c.id   !== undefined);
     client.assert(c.name !== undefined);
     client.assert(c.slug !== undefined);
   });
-  client.global.set("categoryId", response.body[0].id);
+  client.global.set("categoryId", response.body.data[0].id);
 %}
 
 ###
@@ -152,7 +152,7 @@ Authorization: Bearer {{citizenToken}}
 
 > {%
   client.test("Status 200",    () => client.assert(response.status === 200));
-  client.test("Returns array", () => client.assert(Array.isArray(response.body)));
+  client.test("Returns array", () => client.assert(Array.isArray(response.body.data)));
 %}
 
 ###
@@ -185,9 +185,9 @@ Authorization: Bearer {{citizenToken}}
 
 > {%
   client.test("Status 200",           () => client.assert(response.status === 200));
-  client.test("ID matches",           () => client.assert(response.body.id === client.global.get("reportId")));
-  client.test("Status newly_received",() => client.assert(response.body.currentStatus === "newly_received"));
-  client.test("Has imageUrl",         () => client.assert(!!response.body.incidentImageUrl));
+  client.test("ID matches",           () => client.assert(response.body.data.id === client.global.get("reportId")));
+  client.test("Status newly_received",() => client.assert(response.body.data.currentStatus === "newly_received"));
+  client.test("Has imageUrl",         () => client.assert(!!response.body.data.incidentImageUrl));
 %}
 
 ###

@@ -1,5 +1,6 @@
 package com.cityvoice.report.controller;
 
+import com.cityvoice.common.dto.ApiResponse;
 import com.cityvoice.report.dto.CategoryResponse;
 import com.cityvoice.report.service.CategoryService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<List<CategoryResponse>> listActiveCategories() {
-        return ResponseEntity.ok(categoryService.listActiveCategories());
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> listActiveCategories() {
+        return ResponseEntity.ok(ApiResponse.success(categoryService.listActiveCategories()));
     }
 }
