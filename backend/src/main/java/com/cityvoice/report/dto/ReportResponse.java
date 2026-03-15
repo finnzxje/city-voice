@@ -21,6 +21,11 @@ public class ReportResponse {
     private String incidentImageUrl;
     private String resolutionImageUrl;
     private String currentStatus;
+    private String priority;
+    private UUID citizenId;
+    private String citizenName;
+    private UUID assignedToId;
+    private String assignedToName;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private OffsetDateTime resolvedAt;
@@ -40,6 +45,11 @@ public class ReportResponse {
                 .incidentImageUrl(report.getIncidentImageUrl())
                 .resolutionImageUrl(report.getResolutionImageUrl())
                 .currentStatus(report.getCurrentStatus().name())
+                .priority(report.getPriority() != null ? report.getPriority().name() : null)
+                .citizenId(report.getCitizen().getId())
+                .citizenName(report.getCitizen().getFullName())
+                .assignedToId(report.getAssignedTo() != null ? report.getAssignedTo().getId() : null)
+                .assignedToName(report.getAssignedTo() != null ? report.getAssignedTo().getFullName() : null)
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
                 .resolvedAt(report.getResolvedAt())
