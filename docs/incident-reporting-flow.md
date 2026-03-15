@@ -133,3 +133,151 @@ The `currentStatus` field of a report maps to the PostgreSQL enumerator `report_
 4. `rejected`: The report was deemed invalid, duplicate, or unactionable.
 
 All status changes are tracked transactionally in the `status_history` table for auditing and transparency.
+
+---
+
+## 4. Staff Workflow (Module 2)
+
+Staff, managers, and admins manage the lifecycle of reports through a strictly enforced state machine.
+
+```
+newly_received ──► in_progress  (staff reviews & accepts)
+newly_received ──► rejected     (staff rejects as inauthentic)
+in_progress    ──► resolved     (staff uploads proof image)
+```
+
+No step-skipping is allowed. Any invalid transition returns `400 Bad Request`.
+
+---
+
+### 4a. List All Reports (Staff/Manager/Admin)
+
+```http
+GET /reports?status=newly_received&priority=high&page=0&size=20
+Authorization: Bearer <staffToken>
+```
+
+**Query Parameters (all optional):**
+| Param | Type | Example |
+|---|---|---|
+| `status` | enum | `newly_received`, `in_progress`, `resolved`, `rejected` |
+| `priority` | enum | `low`, `medium`, `high`, `critical` |
+| `assignedTo` | UUID | staff user UUID |
+| `categoryId` | integer | `1` |
+| `page` / `size` | integer | defaults: `0` / `20` |
+
+**Returns:** Paginated `ReportResponse`. Staff-visible fields added in Module 2:
+```json
+{
+  "priority": "high",
+  "citizenId": "uuid",
+  "citizenName": "Nguyen Van A",
+  "assignedToId": "uuid",
+  "assignedToName": "Tran Thi B"
+}
+```
+
+---
+
+### 4b. Review Report → `in_progress`
+
+```http
+PUT /reports/{reportId}/review
+Authorization: Bearer <staffToken>
+Content-Type: application/json
+
+{
+  "priority": "high",
+  "assignedTo": "<staffUserUUID>",
+  "note": "Verified authentic – assigning for repair"
+}
+```
+
+**Transitions:** `newly_received → in_progress`  
+**Returns:** `200` with updated `ReportResponse` or `400` if report is not in `newly_received`.
+
+---
+
+### 4c. Reject Report → `rejected`
+
+```http
+PUT /reports/{reportId}/reject
+Authorization: Bearer <staffToken>
+Content-Type: application/json
+
+{
+  "note": "Báo cáo không đủ bằng chứng để xác minh."
+}
+```
+
+**Transitions:** `newly_received → rejected`  
+**Side effects:** Dual-channel notification (in-app + email) sent to the citizen.
+
+---
+
+### 4d. Resolve Report → `resolved`
+
+```http
+POST /reports/{reportId}/resolve
+Authorization: Bearer <staffToken>
+Content-Type: multipart/form-data
+
+image: <proof image file>  (required)
+note:  "Pothole repaired"  (optional text part)
+```
+
+Via curl:
+```bash
+curl -X POST http://localhost:8080/api/reports/{reportId}/resolve \
+  -H "Authorization: Bearer $STAFF_TOKEN" \
+  -F "image=@/path/to/proof.jpg;type=image/jpeg" \
+  -F "note=Pothole fully repaired and resurfaced"
+```
+
+**Transitions:** `in_progress → resolved`  
+**Side effects:** Sets `resolutionImageUrl`, `resolvedAt`. Dual-channel notification sent to the citizen.
+
+---
+
+## 5. Citizen Notifications
+
+Notifications are triggered automatically on `resolved` and `rejected` transitions.
+
+### 5a. List My In-App Notifications
+
+```http
+GET /notifications
+Authorization: Bearer <citizenToken>
+```
+
+**Returns:** Array of in-app `NotificationResponse` (newest first):
+```json
+[
+  {
+    "id": "uuid",
+    "type": "report_resolved",
+    "message": "Báo cáo \"Test pothole\" của bạn đã được giải quyết thành công.",
+    "isRead": false,
+    "sentAt": "2026-03-15T07:00:00Z",
+    "reportId": "uuid"
+  }
+]
+```
+
+### 5b. Unread Count (for badge display)
+
+```http
+GET /notifications/unread-count
+Authorization: Bearer <citizenToken>
+→ { "code": 200, "data": { "count": 2 } }
+```
+
+### 5c. Mark Notification as Read
+
+```http
+PUT /notifications/{notifId}/read
+Authorization: Bearer <citizenToken>
+→ { "code": 200, "data": { ...NotificationResponse, "isRead": true } }
+```
+
+> **Note:** `isRead` is only surfaced for in-app notifications. Email rows are dispatch receipts only and are never returned by these endpoints.

@@ -1,0 +1,286 @@
+### CityVoice – Module 2 Workflow & Resolution Tests
+### Compatible with: IntelliJ HTTP Client (native), kulala.nvim
+### Base URL: http://localhost:8080/api
+###
+### ⚠ SETUP ORDER:
+###   1. Run "0a. Admin Login"   → adminToken stored globally
+###   2. Run "0b. Citizen Login" → citizenToken stored globally
+###   3. Submit a report via curl (section 1) and paste the UUID into {{reportId}}
+###   4. Run tests in section order
+###
+### NOTE: resolve (section 4) requires a proof image via curl.
+
+@baseUrl = http://localhost:8080/api
+@adminEmail = admin@cityvoice.vn
+@adminPassword = Admin@123
+@citizenEmail = finnzxje@gmail.com
+@citizenPassword = Test@12345
+
+# Paste report UUID from section 1 here after submission:
+@reportId = 452504b7-a980-43cc-9992-f811d03823c9
+# Paste notification UUID from section 5a here:
+@notifId = PASTE_NOTIF_UUID_HERE
+
+
+# ─── 0. TOKEN SETUP ──────────────────────────────────────────────────────────
+
+### 0a. Admin login → stores adminToken
+# @name adminLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("adminToken", response.body.data.accessToken);
+  client.test("Login OK", () => client.assert(response.status === 200));
+  client.test("Has token", () => client.assert(!!response.body.data.accessToken));
+%}
+
+###
+
+### 0b. Citizen OTP login → stores citizenToken
+### ⚠ Use auth.http §4 (register + verify OTP) first
+# @name citizenLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{citizenEmail}}",
+  "password":  "{{citizenPassword}}"
+}
+
+> {%
+  client.global.set("citizenToken", response.body.data.accessToken);
+  client.test("Login OK", () => client.assert(response.status === 200));
+%}
+
+
+# ─── 1. SUBMIT REPORT (citizen) ──────────────────────────────────────────────
+# Binary uploads must use curl. Run in terminal; paste returned UUID into {{reportId}} above.
+
+### 1a. CITIZEN submits valid HCMC report → Expect: 201
+# curl -s -X POST http://localhost:8080/api/reports \
+#   -H "Authorization: Bearer $CITIZEN_TOKEN" \
+#   -F "title=Test pothole workflow" \
+#   -F "description=Workflow test report" \
+#   -F "categoryId=1" \
+#   -F "latitude=10.7769" \
+#   -F "longitude=106.7009" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+# → Copy `id` into {{reportId}} above
+
+
+# ─── 2. STAFF LIST ALL REPORTS ───────────────────────────────────────────────
+
+### 2a. Admin lists all reports (no filters) → Expect: 200, paginated
+GET {{baseUrl}}/reports?page=0&size=10
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Has content", () => client.assert(Array.isArray(response.body.data.content)));
+  client.test("Has citizenId field", () => client.assert(response.body.data.content.length === 0 || response.body.data.content[0].citizenId !== undefined));
+%}
+
+###
+
+### 2b. Filter by status=newly_received → Expect: 200
+GET {{baseUrl}}/reports?status=newly_received&page=0&size=5
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+%}
+
+###
+
+### 2c. CITIZEN tries GET /reports → Expect: 403
+GET {{baseUrl}}/reports
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 403", () => client.assert(response.status === 403));
+%}
+
+
+# ─── 3. INVALID TRANSITIONS ──────────────────────────────────────────────────
+
+### 3a. Admin tries to RESOLVE a newly_received report directly → Expect: 400
+# ⚠ Paste a valid reportId (newly_received) above first.
+# curl -s -X POST http://localhost:8080/api/reports/{{reportId}}/resolve \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+# Expect: 400 with "Chỉ có thể hoàn thành báo cáo đang ở trạng thái 'Đang xử lý'"
+
+###
+
+### 3b. Reject a non-existent UUID → Expect: 404
+PUT {{baseUrl}}/reports/00000000-0000-0000-0000-000000000000/reject
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "note": "Does not exist"
+}
+
+> {%
+  client.test("Status 404", () => client.assert(response.status === 404));
+%}
+
+###
+
+### 3c. Reject with empty note → Expect: 400 (validation)
+PUT {{baseUrl}}/reports/{{reportId}}/reject
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "note": "no"
+}
+
+> {%
+  client.test("Status 400", () => client.assert(response.status === 400));
+%}
+
+
+# ─── 4. VALID TRANSITIONS ────────────────────────────────────────────────────
+
+### 4a. REVIEW: newly_received → in_progress (set priority + assignedTo)
+### ⚠ Replace assignedTo with a real staff/admin UUID from your users table
+PUT {{baseUrl}}/reports/{{reportId}}/review
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "priority": "high",
+  "assignedTo": "a26871a5-37fe-4f17-a055-eb5f0a43ddb6",
+  "note": "Verified authentic — assigning for repair"
+}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Status in_progress", () => client.assert(response.body.data.currentStatus === "in_progress"));
+  client.test("Priority set", () => client.assert(response.body.data.priority === "high"));
+%}
+
+###
+
+### 4b. Attempt second review on in_progress report → Expect: 400
+PUT {{baseUrl}}/reports/{{reportId}}/review
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "priority": "low",
+  "assignedTo": "a26871a5-37fe-4f17-a055-eb5f0a43ddb6"
+}
+
+> {%
+  client.test("Status 400", () => client.assert(response.status === 400));
+%}
+
+###
+
+### 4c. RESOLVE: in_progress → resolved (upload proof image via curl)
+# curl -s -X POST http://localhost:8080/api/reports/{{reportId}}/resolve \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" \
+#   -F "note=Pothole repaired and resurfaced" | python3 -m json.tool
+# Expect: 200, currentStatus=resolved, resolutionImageUrl set
+
+
+# ─── 5. NOTIFICATIONS (citizen) ──────────────────────────────────────────────
+
+### 5a. Citizen lists in-app notifications → Expect: 200, contains report_resolved
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Returns array", () => client.assert(Array.isArray(response.body.data)));
+  if (response.body.data.length > 0) {
+    client.global.set("notifId", response.body.data[0].id);
+    client.test("Has type field", () => client.assert(!!response.body.data[0].type));
+    client.test("isRead false", () => client.assert(response.body.data[0].isRead === false));
+  }
+%}
+
+###
+
+### 5b. Citizen checks unread count → Expect: 200, count > 0
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Has count key", () => client.assert(response.body.data.count !== undefined));
+%}
+
+###
+
+### 5c. Mark notification as read → Expect: 200, isRead = true
+PUT {{baseUrl}}/notifications/{{notifId}}/read
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("isRead true", () => client.assert(response.body.data.isRead === true));
+%}
+
+###
+
+### 5d. Unread count should now be 0 → Expect: count = 0
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Count is 0", () => client.assert(response.body.data.count === 0));
+%}
+
+###
+
+### 5e. Admin tries GET /notifications → Expect: 403 (citizen-only)
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 403", () => client.assert(response.status === 403));
+%}
+
+
+# ─── 6. REJECT PATH ──────────────────────────────────────────────────────────
+# Submit a new report (section 1a curl), paste new UUID below
+
+@reportId2 = PASTE_SECOND_REPORT_UUID_HERE
+
+### 6a. Reject the second report → Expect: 200, currentStatus = rejected
+PUT {{baseUrl}}/reports/{{reportId2}}/reject
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "note": "Báo cáo không có ảnh rõ ràng, không đủ chứng cứ để xác minh."
+}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  client.test("Status rejected", () => client.assert(response.body.data.currentStatus === "rejected"));
+%}
+
+###
+
+### 6b. Citizen checks notifications for rejection → Expect: report_rejected entry
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{citizenToken}}
+
+> {%
+  client.test("Status 200", () => client.assert(response.status === 200));
+  const notifs = response.body.data;
+  const rejected = notifs.find(n => n.type === "report_rejected");
+  client.test("Has report_rejected notification", () => client.assert(!!rejected));
+%}
