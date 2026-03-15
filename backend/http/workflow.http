@@ -13,8 +13,11 @@
 @baseUrl = http://localhost:8080/api
 @adminEmail = admin@cityvoice.vn
 @adminPassword = Admin@123
-@citizenEmail = finnzxje@gmail.com
-@citizenPassword = Test@12345
+@citizenEmail = citizen@cityvoice.vn
+@citizenPassword = Citizen@123
+@staffEmail = staff@cityvoice.vn
+@staffPassword = Staff@123
+
 
 # Paste report UUID from section 1 here after submission:
 @reportId = 452504b7-a980-43cc-9992-f811d03823c9
