@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
           const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
-          const { accessToken, refreshToken: newRefresh } = res.data;
+          const { accessToken, refreshToken: newRefresh } = res.data.data;
 
           setTokens(accessToken, newRefresh);
 
@@ -52,13 +52,17 @@ apiClient.interceptors.response.use(
         } catch (refreshError) {
           // If refresh fails, log out
           clearTokens();
-          window.location.href = "/login";
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
           return Promise.reject(refreshError);
         }
       } else {
         // No refresh token available
         clearTokens();
-        window.location.href = "/login";
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);

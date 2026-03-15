@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthAPI } from "../../api/services";
+import toast from "react-hot-toast";
 import {
   Mail,
   User,
@@ -29,13 +30,15 @@ export default function Register() {
 
     try {
       await AuthAPI.registerCitizen(formData);
+      toast.success("Đăng ký thành công! Vui lòng kiểm tra email.");
       // On success, redirect to verify email
       navigate("/verify-email", { state: { email: formData.email } });
     } catch (err: any) {
-      setError(
-        err.response.data.detail || "Đăng ký thất bại. Vui lòng thử lại.",
-      );
-      console.log(err.response.data.detail);
+      const errorMessage =
+        err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.log(err.response?.data?.message);
     } finally {
       setLoading(false);
     }

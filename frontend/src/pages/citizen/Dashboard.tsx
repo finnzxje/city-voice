@@ -12,7 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 
-export default function Dashboard() {
+export default function CitizenDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportResponse[]>([]);
@@ -25,11 +25,10 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchReports = async () => {
+    setLoading(true);
     try {
-      // For citizen, this gets theirs. For staff/admin, they might need a generic /reports endpoint
-      // Assuming 'my' acts as 'all' for admin or there's a specific logic. Let's use getMyReports for now based on docs
       const res = await IncidentAPI.getMyReports();
-      setReports(res.data);
+      setReports(res.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || "Lỗi khi tải danh sách báo cáo.");
     } finally {
@@ -72,15 +71,13 @@ export default function Dashboard() {
               <span className="text-sm font-medium text-gray-500 hidden sm:block">
                 Xin chào, {user?.fullName || user?.email}
               </span>
-              {user?.role === "citizen" && (
-                <button
-                  onClick={() => navigate("/reports/new")}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                >
-                  <PlusCircle className="-ml-1 mr-2 h-4 w-4" />
-                  Báo cáo mới
-                </button>
-              )}
+              <button
+                onClick={() => navigate("/reports/new")}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+              >
+                <PlusCircle className="-ml-1 mr-2 h-4 w-4" />
+                Báo cáo mới
+              </button>
               <button
                 onClick={logout}
                 className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
@@ -99,33 +96,33 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Báo cáo sự cố</h1>
             <p className="mt-1 text-sm text-gray-500">
-              {user?.role === "citizen"
-                ? "Các báo cáo bạn đã gửi"
-                : "Tổng quan các sự cố trong khu vực của bạn"}
+              Các báo cáo bạn đã gửi
             </p>
           </div>
 
-          <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-200 flex">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "list"
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <List className="h-4 w-4 mr-2" /> List
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === "map"
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <MapIcon className="h-4 w-4 mr-2" /> Map
-            </button>
+          <div className="flex gap-4 items-center">
+            <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-200 flex">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "list"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <List className="h-4 w-4 mr-2" /> List
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === "map"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <MapIcon className="h-4 w-4 mr-2" /> Map
+              </button>
+            </div>
           </div>
         </div>
 
@@ -147,24 +144,17 @@ export default function Dashboard() {
               Không tìm thấy báo cáo
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              {user?.role === "citizen"
-                ? "Bạn chưa gửi báo cáo sự cố nào."
-                : "Chưa có báo cáo nào được gán cho bạn."}
+              Bạn chưa gửi báo cáo sự cố nào.
             </p>
-            {user?.role === "citizen" && (
-              <div className="mt-6">
-                <button
-                  onClick={() => navigate("/reports/new")}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <PlusCircle
-                    className="-ml-1 mr-2 h-5 w-5"
-                    aria-hidden="true"
-                  />
-                  Báo cáo mới
-                </button>
-              </div>
-            )}
+            <div className="mt-6">
+              <button
+                onClick={() => navigate("/reports/new")}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <PlusCircle className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+                Báo cáo mới
+              </button>
+            </div>
           </div>
         ) : viewMode === "list" ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -223,7 +213,9 @@ export default function Dashboard() {
 
                     <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${getStatusColor(report.currentStatus)}`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${getStatusColor(
+                          report.currentStatus,
+                        )}`}
                       >
                         {report.currentStatus.replace("_", " ").toUpperCase()}
                       </span>
