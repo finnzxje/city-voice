@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
@@ -101,6 +102,17 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.badRequest()
                                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
                                                 "Yêu cầu multipart không hợp lệ hoặc luồng tệp bị gián đoạn."));
+        }
+
+        // ── Malformed JSON body ───────────────────────────────────────────────────
+
+        @ExceptionHandler(HttpMessageNotReadableException.class)
+        public ResponseEntity<ApiResponse<Object>> handleMessageNotReadable(
+                        HttpMessageNotReadableException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 400 Malformed JSON body", request.getMethod(), request.getRequestURI());
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
+                                                "Nội dung yêu cầu không hợp lệ. Vui lòng kiểm tra định dạng JSON."));
         }
 
         // ── Fallback ─────────────────────────────────────────────────────────────
