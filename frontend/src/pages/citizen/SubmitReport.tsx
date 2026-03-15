@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { IncidentAPI, type Category } from "../../api/services";
+import toast from "react-hot-toast";
 import {
   Camera,
   MapPin,
@@ -30,7 +31,7 @@ export default function SubmitReport() {
     const fetchCategories = async () => {
       try {
         const res = await IncidentAPI.getCategories();
-        setCategories(res.data);
+        setCategories(res.data.data);
       } catch (err) {
         console.error("Failed to load categories", err);
       }
@@ -66,6 +67,7 @@ export default function SubmitReport() {
 
     if (!image) {
       setError("Vui lòng cung cấp hình ảnh về sự cố.");
+      toast.error("Vui lòng cung cấp hình ảnh về sự cố.");
       setLoading(false);
       return;
     }
@@ -80,12 +82,14 @@ export default function SubmitReport() {
       formData.append("image", image);
 
       await IncidentAPI.submitReport(formData);
+      toast.success("Báo cáo đã được gửi thành công!");
       navigate("/");
     } catch (err: any) {
-      setError(
+      const errorMessage =
         err.response?.data?.message ||
-          "Gửi báo cáo thất bại. Đảm bảo vị trí của bạn nằm trong khu vực TP.HCM.",
-      );
+        "Gửi báo cáo thất bại. Đảm bảo vị trí của bạn nằm trong khu vực TP.HCM.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -108,7 +112,8 @@ export default function SubmitReport() {
               Báo cáo Sự cố mới
             </h1>
             <p className="mt-2 text-sm text-gray-500">
-              Cung cấp chi tiết và hình ảnh bằng chứng để nhân viên thành phố có thể giải quyết vấn đề.
+              Cung cấp chi tiết và hình ảnh bằng chứng để nhân viên thành phố có
+              thể giải quyết vấn đề.
             </p>
           </div>
 
@@ -269,7 +274,9 @@ export default function SubmitReport() {
                 </label>
                 <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 mb-4 flex">
                   <span className="text-sm text-blue-800">
-                    Vị trí của bạn đã được tự động xác định. Nếu không đúng, vui lòng nhập tọa độ theo cách thủ công hoặc cho phép quyền truy cập vị trí.
+                    Vị trí của bạn đã được tự động xác định. Nếu không đúng, vui
+                    lòng nhập tọa độ theo cách thủ công hoặc cho phép quyền truy
+                    cập vị trí.
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

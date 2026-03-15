@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthAPI } from "../../api/services";
 import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
 import {
   Mail,
   Lock,
@@ -31,13 +32,15 @@ export default function Login() {
 
   const handleCitizenPassword = async () => {
     const res = await AuthAPI.loginCitizenPassword({ email, password });
-    await login(res.data);
+    await login(res.data.data);
+    toast.success("Đăng nhập thành công!");
     navigate("/");
   };
 
   const handleStaffLogin = async () => {
     const res = await AuthAPI.loginStaff({ email, password });
-    await login(res.data);
+    await login(res.data.data);
+    toast.success("Đăng nhập cán bộ thành công!");
     navigate("/");
   };
 
@@ -45,6 +48,7 @@ export default function Login() {
     await AuthAPI.requestOtpLogin({ email });
     setOtpSent(true);
     setMsg("Mã OTP đã được gửi đến email của bạn.");
+    toast.success("Mã OTP đã được gửi!");
   };
 
   const handleVerifyOTP = async () => {
@@ -52,11 +56,12 @@ export default function Login() {
 
     await login(
       {
-        accessToken: res.data.accessToken,
-        refreshToken: res.data.refreshToken,
+        accessToken: res.data.data.accessToken,
+        refreshToken: res.data.data.refreshToken,
       },
-      res.data.user,
+      res.data.data.user,
     );
+    toast.success("Đăng nhập thành công!");
 
     navigate("/");
   };
@@ -82,9 +87,12 @@ export default function Login() {
     } catch (err: any) {
       if (err.response?.status === 403) {
         // Account inactive, redirect to verify email
+        toast.error("Tài khoản chưa kích hoạt, vui lòng kiểm tra email.");
         navigate("/verify-email", { state: { email } });
       } else {
-        setError(err.response?.data?.title || "Đăng nhập thất bại.");
+        const errorMessage = err.response?.data?.message || "Đăng nhập thất bại.";
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);

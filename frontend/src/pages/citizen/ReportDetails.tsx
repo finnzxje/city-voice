@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { IncidentAPI, type ReportResponse } from "../../api/services";
-import { useAuth } from "../../contexts/AuthContext";
 import {
   ArrowLeft,
   MapPin,
@@ -11,29 +10,27 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-export default function ReportDetails() {
+export default function CitizenReportDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const fetchReport = async () => {
+    try {
+      if (!id) return;
+      const res = await IncidentAPI.getReportById(id);
+      setReport(res.data.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Lỗi tải chi tiết báo cáo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        if (!id) return;
-        const res = await IncidentAPI.getReportById(id);
-        setReport(res.data);
-      } catch (err: any) {
-        setError(
-          err.response?.data?.message || "Lỗi tải chi tiết báo cáo.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchReport();
   }, [id]);
 
@@ -213,20 +210,6 @@ export default function ReportDetails() {
                     </div>
                   </div>
                 </div>
-
-                {user?.role !== "citizen" && (
-                  <div className="pt-6 mt-6 border-t border-gray-100">
-                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-3">
-                      Thao tác Nhân viên
-                    </h4>
-                    <button className="w-full bg-blue-50 text-blue-700 font-medium py-2 rounded-lg text-sm border border-blue-200 hover:bg-blue-100 transition-colors mb-2">
-                      Cập nhật Trạng thái
-                    </button>
-                    <button className="w-full bg-white text-gray-700 font-medium py-2 rounded-lg text-sm border border-gray-200 hover:bg-gray-50 transition-colors">
-                      Gán cho tôi
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>

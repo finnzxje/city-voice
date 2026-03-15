@@ -1,15 +1,22 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth, AuthProvider } from "./contexts/AuthContext";
+import { Toaster } from "react-hot-toast";
 
 // Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import VerifyEmail from "./pages/auth/VerifyEmail";
-import Dashboard from "./pages/reports/Dashboard";
-import SubmitReport from "./pages/reports/SubmitReport";
-import ReportDetails from "./pages/reports/ReportDetails";
 import Landing from "./pages/Landing";
+
+// Citizen Pages
+import CitizenDashboard from "./pages/citizen/Dashboard";
+import CitizenReportDetails from "./pages/citizen/ReportDetails";
+import SubmitReport from "./pages/citizen/SubmitReport";
+
+// Staff Pages
+import StaffDashboard from "./pages/staff/Dashboard";
+import StaffReportDetails from "./pages/staff/ReportDetails";
 
 const ProtectedRoute = ({
   children,
@@ -40,7 +47,7 @@ const ProtectedRoute = ({
 };
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -57,9 +64,15 @@ function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* Public Landing or Protected Dashboard */}
-      <Route
-        path="/"
-        element={isAuthenticated ? <Dashboard /> : <Landing />}
+      <Route 
+        path="/" 
+        element={
+          isAuthenticated ? (
+            user?.role === "citizen" ? <CitizenDashboard /> : <StaffDashboard />
+          ) : (
+            <Landing />
+          )
+        } 
       />
 
       <Route
@@ -75,7 +88,7 @@ function AppRoutes() {
         path="/reports/:id"
         element={
           <ProtectedRoute>
-            <ReportDetails />
+            {user?.role === "citizen" ? <CitizenReportDetails /> : <StaffReportDetails />}
           </ProtectedRoute>
         }
       />
@@ -90,6 +103,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+          <Toaster position="top-right" />
           <AppRoutes />
         </div>
       </BrowserRouter>

@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { AuthAPI, type UserInfo } from "../api/services";
+import toast from "react-hot-toast";
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -30,7 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (accessToken) {
         try {
           const res = await AuthAPI.getMe();
-          setUser(res.data);
+          setUser(res.data.data);
         } catch (error) {
           console.error("Failed to fetch user info", error);
         }
@@ -53,9 +54,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Fetch user info if not provided
       try {
         const res = await AuthAPI.getMe();
-        setUser(res.data);
-      } catch (error) {
-        console.error(error);
+        setUser(res.data.data);
+      } catch (error: any) {
+        console.error(error.response.data.message);
       }
     }
   };
@@ -72,6 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     setUser(null);
+    toast.success("Đã đăng xuất thành công");
   };
 
   return (

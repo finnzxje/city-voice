@@ -18,6 +18,11 @@ export interface ReportResponse {
   incidentImageUrl: string;
   currentStatus: string;
   createdAt: string;
+  priority?: "low" | "medium" | "high" | "critical";
+  citizenId?: string;
+  citizenName?: string;
+  assignedToId?: string;
+  assignedToName?: string;
 }
 
 export interface UserInfo {
@@ -26,6 +31,9 @@ export interface UserInfo {
   fullName: string;
   role: "citizen" | "staff" | "manager" | "admin";
   isActive: boolean;
+}
+interface ApiResponse<T> {
+  data: T;
 }
 
 export const AuthAPI = {
@@ -51,7 +59,7 @@ export const AuthAPI = {
   loginStaff: (data: any) => apiClient.post("/auth/staff/login", data),
 
   // Get Me
-  getMe: () => apiClient.get<UserInfo>("/auth/me"),
+  getMe: () => apiClient.get<ApiResponse<UserInfo>>("/auth/me"),
 
   // Logout
   logout: (refreshToken: string) =>
@@ -59,15 +67,35 @@ export const AuthAPI = {
 };
 
 export const IncidentAPI = {
-  getCategories: () => apiClient.get<Category[]>("/categories"),
+  getCategories: () => apiClient.get<ApiResponse<Category[]>>("/categories"),
 
   submitReport: (formData: FormData) =>
     apiClient.post("/reports", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
-  getMyReports: () => apiClient.get<ReportResponse[]>("/reports/my"),
+  getMyReports: () =>
+    apiClient.get<ApiResponse<ReportResponse[]>>("/reports/my"),
+
+  getAllReports: (params?: any) =>
+    apiClient.get<ApiResponse<{ content: ReportResponse[]; totalPages: number }>>(
+      "/reports",
+      { params },
+    ),
 
   getReportById: (id: string) =>
-    apiClient.get<ReportResponse>(`/reports/${id}`),
+    apiClient.get<ApiResponse<ReportResponse>>(`/reports/${id}`),
+
+  reviewReport: (
+    id: string,
+    data: { priority: string; assignedTo: string; note?: string },
+  ) => apiClient.put(`/reports/${id}/review`, data),
+
+  rejectReport: (id: string, data: { note: string }) =>
+    apiClient.put(`/reports/${id}/reject`, data),
+
+  resolveReport: (id: string, formData: FormData) =>
+    apiClient.post(`/reports/${id}/resolve`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
