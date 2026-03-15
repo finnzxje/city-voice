@@ -1,5 +1,6 @@
 package com.cityvoice.report.controller;
 
+import com.cityvoice.common.dto.ApiResponse;
 import com.cityvoice.report.dto.ReportResponse;
 import com.cityvoice.report.dto.SubmitReportRequest;
 import com.cityvoice.report.service.ReportService;
@@ -27,29 +28,30 @@ public class ReportController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('CITIZEN')")
-    public ResponseEntity<ReportResponse> submitReport(
+    public ResponseEntity<ApiResponse<ReportResponse>> submitReport(
             @Valid @ModelAttribute SubmitReportRequest request,
             @AuthenticationPrincipal User citizen) {
         log.info("Citizen {} submitting report: {}", citizen.getId(), request);
 
         ReportResponse response = reportService.submitReport(request, citizen);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Báo cáo đã được gửi thành công.", response));
     }
 
     @GetMapping("/my")
     @PreAuthorize("hasRole('CITIZEN')")
-    public ResponseEntity<List<ReportResponse>> getMyReports(
+    public ResponseEntity<ApiResponse<List<ReportResponse>>> getMyReports(
             @AuthenticationPrincipal User citizen) {
 
-        return ResponseEntity.ok(reportService.getMyReports(citizen));
+        return ResponseEntity.ok(ApiResponse.success(reportService.getMyReports(citizen)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('CITIZEN') or hasRole('STAFF') or hasRole('MANAGER') or hasRole('ADMIN')")
-    public ResponseEntity<ReportResponse> getReportById(
+    public ResponseEntity<ApiResponse<ReportResponse>> getReportById(
             @PathVariable UUID id,
             @AuthenticationPrincipal User user) {
 
-        return ResponseEntity.ok(reportService.getReportById(id, user));
+        return ResponseEntity.ok(ApiResponse.success(reportService.getReportById(id, user)));
     }
 }

@@ -1,13 +1,12 @@
 package com.cityvoice.exception;
 
+import com.cityvoice.common.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,8 +15,6 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
-import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -30,119 +27,90 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    // ── ResponseStatusException (thrown from services with explicit HTTP status)
-    // ──
+        // ── ResponseStatusException ──────────────────────────────────────────────
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ProblemDetail> handleResponseStatusException(
-            ResponseStatusException ex, HttpServletRequest request) {
-        // Log server-side errors (5xx) but keep client errors (4xx) quiet
-        if (ex.getStatusCode().is5xxServerError()) {
-            log.error("[{}] {} → {}", request.getMethod(), request.getRequestURI(), ex.getReason(), ex);
-        } else {
-            log.debug("[{}] {} → {} {}", request.getMethod(), request.getRequestURI(),
-                    ex.getStatusCode().value(), ex.getReason());
+        @ExceptionHandler(ResponseStatusException.class)
+        public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(
+                        ResponseStatusException ex, HttpServletRequest request) {
+                if (ex.getStatusCode().is5xxServerError()) {
+                        log.error("[{}] {} → {}", request.getMethod(), request.getRequestURI(), ex.getReason(), ex);
+                } else {
+                        log.debug("[{}] {} → {} {}", request.getMethod(), request.getRequestURI(),
+                                        ex.getStatusCode().value(), ex.getReason());
+                }
+
+                String message = ex.getReason() != null ? ex.getReason() : "Lỗi không xác định";
+                return ResponseEntity.status(ex.getStatusCode())
+                                .body(ApiResponse.error(ex.getStatusCode().value(), message));
         }
-        ProblemDetail problem = ProblemDetail.forStatus(ex.getStatusCode());
-        problem.setTitle(ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString());
-        problem.setDetail(ex.getReason());
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.status(ex.getStatusCode()).body(problem);
-    }
 
-    // ── @PreAuthorize / method-level security denials → 403 ──────────────────
+        // ── AccessDeniedException ────────────────────────────────────────────────
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ProblemDetail> handleAccessDenied(
-            AccessDeniedException ex, HttpServletRequest request) {
-        log.debug("[{}] {} → 403 Access Denied (role insufficient)",
-                request.getMethod(), request.getRequestURI());
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
-        problem.setTitle("Forbidden");
-        problem.setDetail("You don't have permission to access this resource.");
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
-    }
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity<ApiResponse<Object>> handleAccessDenied(
+                        AccessDeniedException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 403 Access Denied", request.getMethod(), request.getRequestURI());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(),
+                                                "Bạn không có quyền truy cập vào tài nguyên này."));
+        }
 
-    // ── Validation errors (@Valid / @RequestBody) ────────────────────────────
+        // ── Validation errors ────────────────────────────────────────────────────
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ProblemDetail> handleValidation(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
-        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .collect(Collectors.toMap(
-                        FieldError::getField,
-                        fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Invalid value",
-                        (a, b) -> a // keep first on duplicate field
-                ));
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        problem.setTitle("Validation Failed");
-        problem.setDetail("One or more fields are invalid");
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        problem.setProperty("errors", fieldErrors);
-        return ResponseEntity.badRequest().body(problem);
-    }
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
+                        MethodArgumentNotValidException ex, HttpServletRequest request) {
+                Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
+                                .collect(Collectors.toMap(
+                                                FieldError::getField,
+                                                fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage()
+                                                                : "Giá trị không hợp lệ",
+                                                (a, b) -> a));
+                log.debug("[{}] {} → 400 Validation Failed", request.getMethod(), request.getRequestURI());
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "Dữ liệu không hợp lệ",
+                                                fieldErrors));
+        }
 
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ProblemDetail> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-        log.debug("[{}] {} → 400 Type Mismatch: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        problem.setTitle("Invalid Parameter Type");
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<ApiResponse<Object>> handleTypeMismatch(
+                        MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 400 Type Mismatch", request.getMethod(), request.getRequestURI());
+                String detail = String.format("Tham số '%s' phải có kiểu %s",
+                                ex.getName(),
+                                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "không xác định");
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), detail));
+        }
 
-        String detail = String.format("Parameter '%s' should be of type %s",
-                ex.getName(),
-                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
-        problem.setDetail(detail);
+        // ── Multipart / file upload errors ────────────────────────────────────────
 
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.badRequest().body(problem);
-    }
+        @ExceptionHandler(MaxUploadSizeExceededException.class)
+        public ResponseEntity<ApiResponse<Object>> handleMaxUploadSizeExceeded(
+                        MaxUploadSizeExceededException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 413 File too large", request.getMethod(), request.getRequestURI());
+                return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                                .body(ApiResponse.error(HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                                                "Kích thước tệp tải lên vượt quá giới hạn cho phép."));
+        }
 
-    // ── Multipart / file upload errors ────────────────────────────────────────
+        @ExceptionHandler(MultipartException.class)
+        public ResponseEntity<ApiResponse<Object>> handleMultipart(
+                        MultipartException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 400 Malformed multipart", request.getMethod(), request.getRequestURI());
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
+                                                "Yêu cầu multipart không hợp lệ hoặc luồng tệp bị gián đoạn."));
+        }
 
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ProblemDetail> handleMaxUploadSizeExceeded(
-            MaxUploadSizeExceededException ex, HttpServletRequest request) {
-        log.debug("[{}] {} → 413 File too large", request.getMethod(), request.getRequestURI());
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.PAYLOAD_TOO_LARGE);
-        problem.setTitle("File Too Large");
-        problem.setDetail("The uploaded file exceeds the maximum allowed size.");
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(problem);
-    }
+        // ── Fallback ─────────────────────────────────────────────────────────────
 
-    @ExceptionHandler(MultipartException.class)
-    public ResponseEntity<ProblemDetail> handleMultipart(
-            MultipartException ex, HttpServletRequest request) {
-
-        log.debug("[{}] {} → 400 Malformed multipart: {}",
-                request.getMethod(), request.getRequestURI(), ex.getMostSpecificCause().getMessage());
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
-        problem.setTitle("Invalid Multipart Request");
-        problem.setDetail("The multipart request was malformed or the file stream ended unexpectedly.");
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.badRequest().body(problem);
-    }
-
-    // ── Fallback for unexpected runtime exceptions ────────────────────────────
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ProblemDetail> handleGenericException(
-            Exception ex, HttpServletRequest request) {
-        log.error("[{}] {} → 500 Unhandled exception: {}",
-                request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        problem.setTitle("Internal Server Error");
-        problem.setDetail("An unexpected error occurred. Please try again later.");
-        problem.setInstance(URI.create(request.getRequestURI()));
-        problem.setProperty("timestamp", Instant.now());
-        return ResponseEntity.internalServerError().body(problem);
-    }
+        @ExceptionHandler(Exception.class)
+        public ResponseEntity<ApiResponse<Object>> handleGenericException(
+                        Exception ex, HttpServletRequest request) {
+                log.error("[{}] {} → 500 Unhandled exception", request.getMethod(), request.getRequestURI(), ex);
+                return ResponseEntity.internalServerError()
+                                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                                                "Đã xảy ra lỗi không mong đợi. Vui lòng thử lại sau."));
+        }
 }
