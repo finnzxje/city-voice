@@ -5,8 +5,9 @@
 ### ⚠ SETUP ORDER:
 ###   1. Run "0a. Admin Login"   → adminToken stored globally
 ###   2. Run "0b. Citizen Login" → citizenToken stored globally
-###   3. Submit a report via curl (section 1) and paste the UUID into {{reportId}}
-###   4. Run tests in section order
+###   3. Run "0c. Staff Login"   → staffToken stored globally
+###   4. Submit a report via curl (section 1) and paste the UUID into {{reportId}}
+###   5. Run tests in section order
 ###
 ### NOTE: resolve (section 4) requires a proof image via curl.
 
@@ -20,7 +21,7 @@
 
 
 # Paste report UUID from section 1 here after submission:
-@reportId = 452504b7-a980-43cc-9992-f811d03823c9
+@reportId = ddb291c9-3bdc-4ec2-9652-bfaca42316ed
 # Paste notification UUID from section 5a here:
 @notifId = PASTE_NOTIF_UUID_HERE
 
@@ -48,7 +49,7 @@ Content-Type: application/json
 ### 0b. Citizen OTP login → stores citizenToken
 ### ⚠ Use auth.http §4 (register + verify OTP) first
 # @name citizenLogin
-POST {{baseUrl}}/auth/staff/login
+POST {{baseUrl}}/auth/citizen/login
 Content-Type: application/json
 
 {
@@ -59,6 +60,24 @@ Content-Type: application/json
 > {%
   client.global.set("citizenToken", response.body.data.accessToken);
   client.test("Login OK", () => client.assert(response.status === 200));
+%}
+
+###
+
+### 0c. Staff login → stores staffToken
+# @name staffLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{staffEmail}}",
+  "password": "{{staffPassword}}"
+}
+
+> {%
+  client.global.set("staffToken", response.body.data.accessToken);
+  client.test("Login OK", () => client.assert(response.status === 200));
+  client.test("Has token", () => client.assert(!!response.body.data.accessToken));
 %}
 
 
@@ -142,7 +161,7 @@ Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "note": "no"
+  "note": ""
 }
 
 > {%

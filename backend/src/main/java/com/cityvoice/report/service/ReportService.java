@@ -102,7 +102,7 @@ public class ReportService {
                                 .currentStatus(ReportStatus.newly_received)
                                 .build();
 
-                report = reportRepository.save(report);
+                report = reportRepository.saveAndFlush(report);
 
                 // 7. Persist initial Status History
                 StatusHistory history = StatusHistory.builder()
