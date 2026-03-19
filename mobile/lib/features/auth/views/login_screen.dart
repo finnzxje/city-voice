@@ -98,7 +98,12 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     if (success && mounted) {
-      context.go('/dashboard');
+      final role = authVm.user?.role;
+      if (role == 'staff' || role == 'manager' || role == 'admin') {
+        context.go('/staff-dashboard');
+      } else {
+        context.go('/dashboard');
+      }
     }
   }
 

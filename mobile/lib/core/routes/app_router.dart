@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../storage/secure_storage_helper.dart';
+import '../../features/auth/viewmodels/auth_view_model.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
 import '../../features/auth/views/verify_email_screen.dart';
+import '../../features/reports/views/dashboard_screen.dart';
+import '../../features/reports/views/staff_dashboard_screen.dart';
+import '../../features/reports/views/submit_report_screen.dart';
+import '../../features/reports/views/report_detail_screen.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
 /// Uses [GoRouter] with a redirect guard that sends unauthenticated
-/// users to the login screen and prevents authenticated users from
-/// visiting auth pages.
-///
-/// Route tree:
-/// ```
-/// /login                ← Citizen/Staff login (Password + OTP)
-/// /register             ← Citizen registration
-/// /verify-email?email=  ← Email OTP verification
-/// /dashboard            ← Protected — citizen home
-/// /reports/new          ← Protected — submit report
-/// /reports/:id          ← Protected — report detail
-/// ```
+/// users to the login screen and routes authenticated users to the
+/// appropriate dashboard based on their role:
+///   - citizen → `/dashboard`
+///   - staff/manager/admin → `/staff-dashboard`
 class AppRouter {
   final SecureStorageHelper _storage;
 
@@ -50,74 +48,72 @@ class AppRouter {
         },
       ),
 
-      // ── Protected Routes ─────────────────
+      // ── Citizen routes ────────────────────────────────────────────────
       GoRoute(
         path: '/dashboard',
         name: 'dashboard',
-        builder: (context, state) => const _PlaceholderPage(title: 'Dashboard'),
+        builder: (context, state) => const DashboardScreen(),
       ),
       GoRoute(
         path: '/reports/new',
         name: 'submit-report',
-        builder: (context, state) =>
-            const _PlaceholderPage(title: 'Submit Report'),
+        builder: (context, state) => const SubmitReportScreen(),
       ),
       GoRoute(
         path: '/reports/:id',
         name: 'report-detail',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return _PlaceholderPage(title: 'Report $id');
+          return ReportDetailScreen(reportId: id);
         },
+      ),
+
+      // ── Staff / Manager / Admin routes ─────────────────────────────
+      GoRoute(
+        path: '/staff-dashboard',
+        name: 'staff-dashboard',
+        builder: (context, state) => const StaffDashboardScreen(),
       ),
     ],
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Global redirect — auth guard
+  // Global redirect — auth + role guard
   // ═══════════════════════════════════════════════════════════════════════════
   Future<String?> _globalRedirect(
     BuildContext context,
     GoRouterState state,
   ) async {
+    // Capture role-based homepage BEFORE the async gap.
+    final homepage = _homepageForRole(context);
     final hasToken = await _storage.hasTokens();
     final currentPath = state.matchedLocation;
 
-    // Paths that don't require authentication.
     const publicPaths = {'/login', '/register', '/verify-email'};
     final isOnPublicPage = publicPaths.contains(currentPath);
 
+    // Not authenticated → go to login
     if (!hasToken && !isOnPublicPage) {
-      // Not authenticated → send to login.
       return '/login';
     }
 
+    // Authenticated → redirect away from auth pages based on role
     if (hasToken && isOnPublicPage) {
-      // Already authenticated → send to dashboard.
-      return '/dashboard';
+      return homepage;
     }
 
-    // No redirect needed.
     return null;
   }
-}
 
-// ─── Placeholder page  ─────────────────────────────────
-
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-  const _PlaceholderPage({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-      ),
-    );
+  /// Returns the correct homepage path based on the user's role.
+  String _homepageForRole(BuildContext context) {
+    try {
+      final authVm = context.read<AuthViewModel>();
+      final role = authVm.user?.role;
+      if (role == 'staff' || role == 'manager' || role == 'admin') {
+        return '/staff-dashboard';
+      }
+    } catch (_) {}
+    return '/dashboard';
   }
 }
