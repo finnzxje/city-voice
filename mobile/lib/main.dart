@@ -6,6 +6,8 @@ import 'app.dart';
 import 'core/network/dio_client.dart';
 import 'core/routes/app_router.dart';
 import 'core/storage/secure_storage_helper.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/auth/viewmodels/auth_view_model.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,16 +33,27 @@ void main() {
   final dio = DioClient.create(storage: storage);
   final appRouter = AppRouter(storage: storage);
 
+  // ── Feature services ───────────────────────────────────────────────────
+  final authService = AuthService(dio: dio);
+
   runApp(
-    /// [MultiProvider] makes core dependencies available to every widget
-    /// and ViewModel via `context.read<T>()`.
-    ///
-    /// Feature-specific ViewModels will be registered on their own routes
+    /// [MultiProvider] makes core dependencies and feature ViewModels
+    /// available to every widget via `context.read<T>()` / `context.watch<T>()`.
     MultiProvider(
       providers: [
+        // Core
         Provider<SecureStorageHelper>.value(value: storage),
         Provider<Dio>.value(value: dio),
         Provider<AppRouter>.value(value: appRouter),
+
+        // Auth
+        Provider<AuthService>.value(value: authService),
+        ChangeNotifierProvider<AuthViewModel>(
+          create: (_) => AuthViewModel(
+            authService: authService,
+            storage: storage,
+          )..tryAutoLogin(),
+        ),
       ],
       child: const CityVoiceApp(),
     ),

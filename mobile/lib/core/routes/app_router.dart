@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../storage/secure_storage_helper.dart';
+import '../../features/auth/views/login_screen.dart';
+import '../../features/auth/views/register_screen.dart';
+import '../../features/auth/views/verify_email_screen.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
@@ -10,12 +13,12 @@ import '../storage/secure_storage_helper.dart';
 ///
 /// Route tree:
 /// ```
-/// /login
-/// /register
-/// /verify-email
-/// /dashboard           ← (protected)
-/// /reports/new          ← (protected)
-/// /reports/:id          ← (protected)
+/// /login                ← Citizen/Staff login (Password + OTP)
+/// /register             ← Citizen registration
+/// /verify-email?email=  ← Email OTP verification
+/// /dashboard            ← Protected — citizen home
+/// /reports/new          ← Protected — submit report
+/// /reports/:id          ← Protected — report detail
 /// ```
 class AppRouter {
   final SecureStorageHelper _storage;
@@ -31,23 +34,23 @@ class AppRouter {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const _PlaceholderPage(title: 'Login'),
+        builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: '/register',
         name: 'register',
-        builder: (context, state) => const _PlaceholderPage(title: 'Register'),
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/verify-email',
         name: 'verify-email',
         builder: (context, state) {
           final email = state.uri.queryParameters['email'] ?? '';
-          return _PlaceholderPage(title: 'Verify Email: $email');
+          return VerifyEmailScreen(email: email);
         },
       ),
 
-      // ── Protected Routes ─────────────────────────────────────────────
+      // ── Protected Routes ─────────────────
       GoRoute(
         path: '/dashboard',
         name: 'dashboard',
@@ -99,7 +102,7 @@ class AppRouter {
   }
 }
 
-// ─── Placeholder pages (replaced in Phase 3 & 4) ───────────────────────────
+// ─── Placeholder page  ─────────────────────────────────
 
 class _PlaceholderPage extends StatelessWidget {
   final String title;
