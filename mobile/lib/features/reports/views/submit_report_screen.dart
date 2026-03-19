@@ -181,7 +181,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     }
 
     final vm = context.read<ReportViewModel>();
-    final success = await vm.submitReport(
+    final String? newReportId = await vm.submitReport(
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? null
@@ -192,9 +192,13 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
       imageFile: _imageFile!,
     );
 
-    if (success && mounted) {
+    if (newReportId != null && mounted) {
       _showSnackBar('Báo cáo đã được gửi thành công!');
-      context.pop();
+      // context.pop();
+      context.pushReplacementNamed(
+        'report-detail',
+        pathParameters: {'id': newReportId},
+      );
     } else if (vm.errorMessage != null && mounted) {
       _showSnackBar(vm.errorMessage!, isError: true);
     }

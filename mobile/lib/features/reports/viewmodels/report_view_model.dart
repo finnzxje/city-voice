@@ -168,7 +168,7 @@ class ReportViewModel extends ChangeNotifier {
   }
 
   /// Submit a new report.
-  Future<bool> submitReport({
+  Future<String?> submitReport({
     required String title,
     String? description,
     required int categoryId,
@@ -193,12 +193,12 @@ class ReportViewModel extends ChangeNotifier {
       _setSuccess('Báo cáo đã được gửi thành công!');
       _isSubmitting = false;
       notifyListeners();
-      return true;
+      return report.id;
     } catch (e) {
       _setError(_extractError(e));
       _isSubmitting = false;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 

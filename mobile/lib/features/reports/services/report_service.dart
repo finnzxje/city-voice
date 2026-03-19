@@ -43,11 +43,7 @@ class ReportService {
 
     final data = response.data;
     if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      return apiResponse.data!;
+      return Report.fromJson(data);
     }
     throw Exception('Unexpected response format');
   }
@@ -80,11 +76,7 @@ class ReportService {
 
     final data = response.data;
     if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      return apiResponse.data!;
+      return Report.fromJson(data);
     }
     throw Exception('Unexpected response format');
   }

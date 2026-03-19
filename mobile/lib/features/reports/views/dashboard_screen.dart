@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/utils.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../models/report.dart';
 import '../viewmodels/report_view_model.dart';
@@ -390,8 +391,10 @@ class _ReportCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.network(
-                    report.incidentImageUrl!
-                        .replaceAll('http://minio', ApiConstants.localhost),
+                    // report.incidentImageUrl!
+                    //     .replaceAll('http://minio', ApiConstants.localhost),
+                    Utils.getSafeUrl(report.incidentImageUrl),
+
                     width: 64,
                     height: 64,
                     fit: BoxFit.cover,
@@ -478,7 +481,7 @@ class _ReportCard extends StatelessWidget {
                         const Spacer(),
                         // Date
                         Text(
-                          _formatDate(report.createdAt),
+                          Utils.formatDate(report.createdAt),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textHint,
                             fontSize: 11,
@@ -494,9 +497,5 @@ class _ReportCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
   }
 }
