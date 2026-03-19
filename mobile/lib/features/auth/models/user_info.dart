@@ -27,10 +27,10 @@ class UserInfo {
 
   factory UserInfo.fromJson(Map<String, dynamic> json) {
     return UserInfo(
-      id: json['id'] as String,
-      email: json['email'] as String,
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
       fullName: json['fullName'] as String?,
-      role: (json['role'] as String).toLowerCase(),
+      role: (json['role']?.toString() ?? 'citizen').toLowerCase(),
       isActive: json['isActive'] as bool? ?? false,
     );
   }

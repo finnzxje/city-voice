@@ -1,14 +1,14 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/constants/api_constants.dart';
-import '../../../core/network/api_exception.dart';
-import '../../../core/network/api_response.dart';
 import '../models/token_response.dart';
 import '../models/user_info.dart';
 
 /// Service layer for all authentication-related API calls.
 ///
-/// Wraps Dio calls and returns domain-safe models. Throws
-/// [ApiException] on failure (handled by the interceptor pipeline).
+/// Every parsing method is **resilient**: handles both the standard
+/// `{ "code": 200, "data": { ... } }` wrapper format and flat responses
+/// where the payload sits at the root level.
 class AuthService {
   final Dio _dio;
 
@@ -35,14 +35,7 @@ class AuthService {
           'phoneNumber': phoneNumber,
       },
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<void>.fromJson(data);
-      return apiResponse.message;
-    }
-    // Fallback for unexpected response formats.
-    return data?.toString() ?? 'Đăng ký thành công.';
+    return _extractMessage(response.data, 'Đăng ký thành công.');
   }
 
   /// Verifies the citizen's email with the OTP code.
@@ -54,13 +47,7 @@ class AuthService {
       ApiConstants.citizenVerifyEmail,
       data: {'email': email, 'otp': otp},
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<void>.fromJson(data);
-      return apiResponse.message;
-    }
-    return data?.toString() ?? 'Xác thực email thành công.';
+    return _extractMessage(response.data, 'Xác thực email thành công.');
   }
 
   /// Resends the email verification OTP.
@@ -69,13 +56,7 @@ class AuthService {
       ApiConstants.citizenResendVerification,
       data: {'email': email},
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<void>.fromJson(data);
-      return apiResponse.message;
-    }
-    return data?.toString() ?? 'Mã xác thực đã được gửi lại.';
+    return _extractMessage(response.data, 'Mã xác thực đã được gửi lại.');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -91,12 +72,7 @@ class AuthService {
       ApiConstants.citizenLogin,
       data: {'email': email, 'password': password},
     );
-
-    final apiResponse = ApiResponse<TokenResponse>.fromJson(
-      response.data as Map<String, dynamic>,
-      fromJsonT: (data) => TokenResponse.fromJson(data as Map<String, dynamic>),
-    );
-    return apiResponse.data!;
+    return _parseTokenResponse(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -109,13 +85,7 @@ class AuthService {
       ApiConstants.citizenRequestOtp,
       data: {'email': email},
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<void>.fromJson(data);
-      return apiResponse.message;
-    }
-    return data?.toString() ?? 'Mã OTP đã được gửi.';
+    return _extractMessage(response.data, 'Mã OTP đã được gửi.');
   }
 
   /// Verifies the login OTP and returns a token pair.
@@ -127,12 +97,7 @@ class AuthService {
       ApiConstants.citizenVerifyOtp,
       data: {'email': email, 'otp': otp},
     );
-
-    final apiResponse = ApiResponse<TokenResponse>.fromJson(
-      response.data as Map<String, dynamic>,
-      fromJsonT: (data) => TokenResponse.fromJson(data as Map<String, dynamic>),
-    );
-    return apiResponse.data!;
+    return _parseTokenResponse(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -148,12 +113,7 @@ class AuthService {
       ApiConstants.staffLogin,
       data: {'email': email, 'password': password},
     );
-
-    final apiResponse = ApiResponse<TokenResponse>.fromJson(
-      response.data as Map<String, dynamic>,
-      fromJsonT: (data) => TokenResponse.fromJson(data as Map<String, dynamic>),
-    );
-    return apiResponse.data!;
+    return _parseTokenResponse(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -163,12 +123,7 @@ class AuthService {
   /// Fetches the profile of the currently authenticated user.
   Future<UserInfo> fetchCurrentUser() async {
     final response = await _dio.get(ApiConstants.me);
-
-    final apiResponse = ApiResponse<UserInfo>.fromJson(
-      response.data as Map<String, dynamic>,
-      fromJsonT: (data) => UserInfo.fromJson(data as Map<String, dynamic>),
-    );
-    return apiResponse.data!;
+    return _parseUserInfo(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -185,5 +140,80 @@ class AuthService {
     } on DioException {
       // Swallow errors — we always clear local state regardless.
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Private helpers — resilient parsing
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Extracts message from either ApiResponse wrapper or plain response.
+  String _extractMessage(dynamic data, String fallback) {
+    if (data is Map<String, dynamic>) {
+      final message = data['message'] as String?;
+      if (message != null && message.isNotEmpty) return message;
+    }
+    if (data is String && data.isNotEmpty) return data;
+    return fallback;
+  }
+
+  /// Parses a [TokenResponse] from the response body.
+  ///
+  /// Handles three possible formats:
+  /// 1. Standard: `{ "code": 200, "data": { "accessToken": "...", ... } }`
+  /// 2. Flat:     `{ "accessToken": "...", "refreshToken": "...", ... }`
+  /// 3. Wrapped data without code: `{ "data": { "accessToken": "..." } }`
+  TokenResponse _parseTokenResponse(dynamic data) {
+    if (data is! Map<String, dynamic>) {
+      debugPrint(
+          '[AuthService] Unexpected token response type: ${data.runtimeType}');
+      throw Exception('Unexpected response format from server');
+    }
+
+    final map = data;
+
+    // Case 1 & 3: token data nested under 'data' key
+    if (map.containsKey('data') && map['data'] is Map<String, dynamic>) {
+      final nested = map['data'] as Map<String, dynamic>;
+      if (nested.containsKey('accessToken')) {
+        return TokenResponse.fromJson(nested);
+      }
+    }
+
+    // Case 2: token fields at root level
+    if (map.containsKey('accessToken')) {
+      return TokenResponse.fromJson(map);
+    }
+
+    debugPrint('[AuthService] Could not find token fields in response: $map');
+    throw Exception('Invalid token response from server');
+  }
+
+  /// Parses a [UserInfo] from the response body.
+  ///
+  /// Handles both `{ "data": { ...user... } }` and flat `{ ...user... }`.
+  UserInfo _parseUserInfo(dynamic data) {
+    if (data is! Map<String, dynamic>) {
+      debugPrint(
+          '[AuthService] Unexpected user response type: ${data.runtimeType}');
+      throw Exception('Unexpected response format from server');
+    }
+
+    final map = data;
+
+    // Nested under 'data'
+    if (map.containsKey('data') && map['data'] is Map<String, dynamic>) {
+      final nested = map['data'] as Map<String, dynamic>;
+      if (nested.containsKey('email') || nested.containsKey('id')) {
+        return UserInfo.fromJson(nested);
+      }
+    }
+
+    // Flat at root
+    if (map.containsKey('email') || map.containsKey('id')) {
+      return UserInfo.fromJson(map);
+    }
+
+    debugPrint('[AuthService] Could not find user fields in response: $map');
+    throw Exception('Invalid user response from server');
   }
 }

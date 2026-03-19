@@ -24,10 +24,10 @@ class TokenResponse {
 
   factory TokenResponse.fromJson(Map<String, dynamic> json) {
     return TokenResponse(
-      accessToken: json['accessToken'] as String,
-      refreshToken: json['refreshToken'] as String,
-      tokenType: json['tokenType'] as String? ?? 'Bearer',
-      accessExpiresIn: json['accessExpiresIn'] as int? ?? 0,
+      accessToken: json['accessToken']?.toString() ?? '',
+      refreshToken: json['refreshToken']?.toString() ?? '',
+      tokenType: json['tokenType']?.toString() ?? 'Bearer',
+      accessExpiresIn: (json['accessExpiresIn'] as num?)?.toInt() ?? 0,
     );
   }
 
