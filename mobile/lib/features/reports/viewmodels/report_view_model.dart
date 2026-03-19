@@ -104,11 +104,11 @@ class ReportViewModel extends ChangeNotifier {
       final results = await Future.wait([
         _reportService.getMyReports(),
         _categoryService.getCategories(),
-        _notificationService.getUnreadCount(),
+        // _notificationService.getUnreadCount(),
       ]);
       _reports = results[0] as List<Report>;
       _categories = results[1] as List<IncidentCategory>;
-      _unreadCount = results[2] as int;
+      // _unreadCount = results[2] as int;
     } catch (e) {
       _setError(_extractError(e));
     } finally {
@@ -219,13 +219,13 @@ class ReportViewModel extends ChangeNotifier {
   // ── Notifications ──────────────────────────────────────────────────────────
 
   /// Fetch all notifications (for notification list/panel).
-  Future<void> loadNotifications() async {
-    try {
-      _notifications = await _notificationService.getNotifications();
-      _unreadCount = _notifications.where((n) => !n.isRead).length;
-      notifyListeners();
-    } catch (_) {}
-  }
+  // Future<void> loadNotifications() async {
+  //   try {
+  //     _notifications = await _notificationService.getNotifications();
+  //     _unreadCount = _notifications.where((n) => !n.isRead).length;
+  //     notifyListeners();
+  //   } catch (_) {}
+  // }
 
   /// Mark a notification as read.
   Future<void> markNotificationRead(String id) async {

@@ -5,7 +5,7 @@ class Report {
   final String id;
   final String title;
   final String? description;
-  final int categoryId;
+  final int? categoryId;
   final String categoryName;
   final double latitude;
   final double longitude;
@@ -14,7 +14,7 @@ class Report {
   final String? resolutionImageUrl;
   final String currentStatus;
   final String? priority;
-  final String citizenId;
+  final String? citizenId;
   final String? citizenName;
   final String? assignedToId;
   final String? assignedToName;
@@ -26,7 +26,7 @@ class Report {
     required this.id,
     required this.title,
     this.description,
-    required this.categoryId,
+    this.categoryId,
     required this.categoryName,
     required this.latitude,
     required this.longitude,
@@ -35,7 +35,7 @@ class Report {
     this.resolutionImageUrl,
     required this.currentStatus,
     this.priority,
-    required this.citizenId,
+    this.citizenId,
     this.citizenName,
     this.assignedToId,
     this.assignedToName,

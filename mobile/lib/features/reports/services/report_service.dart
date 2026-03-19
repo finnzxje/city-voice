@@ -61,14 +61,11 @@ class ReportService {
     final response = await _dio.get(ApiConstants.myReports);
 
     final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<List<Report>>.fromJson(
-        data,
-        fromJsonT: (json) => (json as List)
-            .map((e) => Report.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
-      return apiResponse.data ?? [];
+    if (data is List) {
+      return data.map((item) {
+        // Mỗi item trong List là một Map chứa id, name, slug, iconKey
+        return Report.fromJson(item as Map<String, dynamic>);
+      }).toList();
     }
     return [];
   }

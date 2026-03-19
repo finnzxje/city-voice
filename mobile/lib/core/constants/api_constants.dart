@@ -11,12 +11,14 @@ library;
 class ApiConstants {
   ApiConstants._(); // prevent instantiation
 
+  static const String localhost = 'http://192.168.1.26';
+
   // ── Base URL ───────────────────────────────────────────────────────────────
   /// Default base URL for the CityVoice Spring Boot backend.
   /// Override via environment variable or a settings screen in the future.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.26:8080/api',
+    defaultValue: '$localhost:8080/api',
   );
 
   // ── Auth endpoints ─────────────────────────────────────────────────────────
