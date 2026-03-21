@@ -105,6 +105,29 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     }
   }
 
+  // ── select location ───────────────────────────────────────
+  Future<void> _openMapPicker() async {
+    final initialLatLng = (_latitude != null && _longitude != null)
+        ? LatLng(_latitude!, _longitude!)
+        : const LatLng(10.762622, 106.660172);
+
+    final LatLng? pickedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _MapPickerScreen(initialLocation: initialLatLng),
+      ),
+    );
+
+    // update location
+    if (pickedLocation != null) {
+      setState(() {
+        _latitude = pickedLocation.latitude;
+        _longitude = pickedLocation.longitude;
+        _locationError = null;
+      });
+    }
+  }
+
   // ── Image Picker Logic ─────────────────────────────────────────────────────
 
   Future<void> _pickImage(ImageSource source) async {
@@ -537,7 +560,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     );
   }
 
-  // ── Widget Location Card  ──────────────
+  // ── Widget Location Card ──────────────
   Widget _buildLocationCard() {
     return Container(
       decoration: BoxDecoration(
@@ -553,79 +576,109 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
       ),
       child: Column(
         children: [
-          // flutter map
-          SizedBox(
-            height: 120,
-            width: double.infinity,
-            child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: _isLocating
-                  ? const Center(
-                      child:
-                          CircularProgressIndicator(color: Color(0xFF2563EB)),
-                    )
-                  : (_latitude != null && _longitude != null)
-                      ? FlutterMap(
-                          options: MapOptions(
-                            initialCenter: LatLng(_latitude!, _longitude!),
-                            initialZoom: 16.0,
-                            interactionOptions: const InteractionOptions(
-                                flags: InteractiveFlag.none),
-                          ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.example.cityvoice',
-                            ),
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  point: LatLng(_latitude!, _longitude!),
-                                  width: 40,
-                                  height: 40,
-                                  child: const Icon(
-                                    Icons.location_on,
-                                    color: Colors.redAccent,
-                                    size: 36,
-                                  ),
+          GestureDetector(
+            onTap: _openMapPicker, // <--- open Map Picker screen
+            child: SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _isLocating
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF2563EB)))
+                        : (_latitude != null && _longitude != null)
+                            ? FlutterMap(
+                                key: ValueKey('$_latitude-$_longitude'),
+                                options: MapOptions(
+                                  initialCenter:
+                                      LatLng(_latitude!, _longitude!),
+                                  initialZoom: 16.0,
+                                  interactionOptions: const InteractionOptions(
+                                      flags: InteractiveFlag.none),
                                 ),
-                              ],
-                            ),
-                          ],
-                        )
-                      : Container(
-                          color: const Color(0xFFE2E8F0),
-                          child: const Center(
-                            child: Icon(Icons.location_off_outlined,
-                                size: 40, color: Color(0xFF94A3B8)),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate:
+                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName:
+                                        'com.example.cityvoice',
+                                  ),
+                                  MarkerLayer(
+                                    markers: [
+                                      Marker(
+                                        point: LatLng(_latitude!, _longitude!),
+                                        width: 40,
+                                        height: 40,
+                                        child: const Icon(Icons.location_on,
+                                            color: Colors.redAccent, size: 36),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Container(
+                                color: const Color(0xFFE2E8F0),
+                                child: const Center(
+                                  child: Icon(Icons.location_off_outlined,
+                                      size: 40, color: Color(0xFF94A3B8)),
+                                ),
+                              ),
+
+                    // guide user to click
+                    Positioned(
+                      bottom: 8,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.touch_app,
+                                  color: Colors.white, size: 14),
+                              SizedBox(width: 6),
+                              Text(
+                                'Chạm để điều chỉnh vị trí',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-
-          // Thông tin tọa độ
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                // Icon mũi tên định vị
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.near_me,
-                    color: Color(0xFF64748B),
-                    size: 20,
-                  ),
+                  child: const Icon(Icons.near_me,
+                      color: Color(0xFF64748B), size: 20),
                 ),
                 const SizedBox(width: 12),
-
-                // Text thông tin
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -651,32 +704,126 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                                 ? '${_latitude?.toStringAsFixed(5)}, ${_longitude?.toStringAsFixed(5)}'
                                 : 'Chưa xác định được tọa độ'),
                         style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                        ),
+                            fontSize: 12, color: Color(0xFF64748B)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-
-                // Nút Làm mới
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF), // Nền xanh nhạt
+                    color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: IconButton(
                     onPressed: _isLocating ? null : _detectLocation,
-                    icon: const Icon(Icons.refresh_rounded),
+                    icon: const Icon(Icons.my_location_rounded),
                     color: const Color(0xFF2563EB),
-                    tooltip: 'Làm mới vị trí',
+                    tooltip: 'Lấy lại vị trí GPS',
                     constraints: const BoxConstraints(),
                     padding: const EdgeInsets.all(10),
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Full-screen to choose location on map ───────────────
+class _MapPickerScreen extends StatefulWidget {
+  final LatLng initialLocation;
+
+  const _MapPickerScreen({required this.initialLocation});
+
+  @override
+  State<_MapPickerScreen> createState() => _MapPickerScreenState();
+}
+
+class _MapPickerScreenState extends State<_MapPickerScreen> {
+  late LatLng _currentCenter;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentCenter = widget.initialLocation;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Chọn vị trí sự cố',
+          style: TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 18,
+              fontWeight: FontWeight.w600),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Color(0xFF2563EB)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: _currentCenter,
+              initialZoom: 16.0,
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture && position.center != null) {
+                  setState(() {
+                    _currentCenter = position.center!;
+                  });
+                }
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.cityvoice',
+              ),
+            ],
+          ),
+
+          // Icon Pin in center
+          Center(
+            child: Transform.translate(
+              offset: const Offset(0, -20),
+              child: const Icon(
+                Icons.location_on,
+                size: 48,
+                color: Colors.redAccent,
+              ),
+            ),
+          ),
+
+          // confirm button
+          Positioned(
+            bottom: 30,
+            left: 20,
+            right: 20,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, _currentCenter),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 4,
+              ),
+              child: const Text(
+                'Xác nhận vị trí này',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
         ],
