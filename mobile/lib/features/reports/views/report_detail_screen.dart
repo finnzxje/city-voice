@@ -1,438 +1,403 @@
-import 'package:city_voice/core/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/utils.dart';
 import '../viewmodels/report_view_model.dart';
+import '../models/report.dart';
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const _kGreen = Color(0xFF1B5E44); // dark-green: completed steps
+const _kBlue = Color(0xFF2563EB); // royal-blue: current when newly_received
+const _kOrange = Color(0xFFF59E0B); // amber: current when in_progress
+const _kGrey = Color(0xFFCBD5E1); // pending node
+const _kGreyLine = Color(0xFFE2E8F0); // pending connector
+const _kGreenLine = Color(0xFF1B5E44); // completed connector
+
+// ── Node visual styles ────────────────────────────────────────────────────────
+enum _NodeStyle {
+  doneGreen, // dark-green filled + white ✓  (completed step)
+  currentBlue, // royal-blue filled + white ✓  (active when newly_received)
+  currentOrange, // amber filled + white wrench   (active when in_progress)
+  pendingGrey, // grey filled + faded icon      (not yet reached)
+  rejected, // red filled + white ✗
+}
 
 class ReportDetailScreen extends StatefulWidget {
   final String reportId;
-
   const ReportDetailScreen({super.key, required this.reportId});
 
   @override
   State<ReportDetailScreen> createState() => _ReportDetailScreenState();
 }
 
-class _ReportDetailScreenState extends State<ReportDetailScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
-
+class _ReportDetailScreenState extends State<ReportDetailScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Setup entrance animations
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportViewModel>().loadReportDetail(widget.reportId);
     });
   }
 
   @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: const Color(0xFFF1F5F9),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFF2563EB)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'Chi tiết phản ánh',
+            style: TextStyle(
+              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.share_outlined, color: Color(0xFF2563EB)),
+              onPressed: () {},
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
         body: Consumer<ReportViewModel>(
           builder: (context, vm, _) {
-            // ── Loading State ───────────────────────────────────
             if (vm.isLoading) {
-              return const _LoadingView();
-            }
-
-            // ── Error State ─────────────────────────────────────
-            if (vm.errorMessage != null && vm.selectedReport == null) {
-              return _ErrorView(
-                message: vm.errorMessage!,
-                onRetry: () => vm.loadReportDetail(widget.reportId),
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF2563EB)),
               );
             }
-
+            if (vm.errorMessage != null && vm.selectedReport == null) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text(vm.errorMessage!,
+                        style: const TextStyle(color: Colors.red)),
+                    TextButton(
+                      onPressed: () => vm.loadReportDetail(widget.reportId),
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              );
+            }
             final report = vm.selectedReport;
             if (report == null) {
-              return const _EmptyView();
+              return const Center(child: Text('Không tìm thấy phản ánh'));
             }
-
-            // Trigger animation once data is ready
-            _animController.forward();
-
-            final statusColor = AppColors.statusColor(report.currentStatus);
-            final statusBg =
-                AppColors.statusBackgroundColor(report.currentStatus);
-
-            return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // ── Hero Image App Bar ──────────────────────────
-                _HeroAppBar(
-                  imageUrl: report.incidentImageUrl,
-                  statusLabel: report.statusLabel,
-                  statusColor: statusColor,
-                  statusBg: statusBg,
-                ),
-
-                // ── Main Content ────────────────────────────────
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: _ContentSheet(
-                        report: report,
-                        theme: theme,
-                        isDark: isDark,
-                        statusColor: statusColor,
-                        statusBg: statusBg,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
+            return _buildContent(report);
           },
         ),
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero App Bar with full-bleed image
-// ─────────────────────────────────────────────────────────────────────────────
-class _HeroAppBar extends StatelessWidget {
-  final String? imageUrl;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusBg;
-
-  const _HeroAppBar({
-    required this.imageUrl,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusBg,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 340,
-      pinned: true,
-      stretch: true,
-      elevation: 0,
-      backgroundColor: Colors.black,
-      // Custom back button with frosted circle
-      leading: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: _GlassButton(
-          onTap: () => Navigator.of(context).pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: Colors.white),
+  // ── Main scroll body ───────────────────────────────────────────────────────
+  Widget _buildContent(Report report) {
+    return ListView(
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        // Hero image — full-bleed behind AppBar
+        SizedBox(
+          height: 280,
+          width: double.infinity,
+          child: report.incidentImageUrl != null
+              ? Image.network(
+                  Utils.getSafeUrl(report.incidentImageUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _buildPlaceholderHero(),
+                )
+              : _buildPlaceholderHero(),
         ),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.fadeTitle,
-        ],
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Incident photo
-            if (imageUrl != null)
-              Image.network(
-                Utils.getSafeUrl(imageUrl),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _PlaceholderHero(),
-              )
-            else
-              const _PlaceholderHero(),
 
-            // Multi-stop gradient for legibility
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x66000000),
-                    Color(0x00000000),
-                    Color(0x99000000),
-                  ],
-                  stops: [0.0, 0.45, 1.0],
+        Transform.translate(
+          offset: const Offset(0, -24),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white, // Thẻ màu trắng
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Text(
+                  report.title,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                    height: 1.25,
+                  ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 10),
 
-            // Bottom status pill pinned to lower-left
-            Positioned(
-              left: 20,
-              bottom: 32,
-              child: _StatusPill(
-                label: statusLabel,
-                color: statusColor,
-                background: statusBg,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                // Category + date
+                _buildCategoryRow(report),
+                const SizedBox(height: 24),
 
-// ─────────────────────────────────────────────────────────────────────────────
-// White rounded sheet that slides over the hero image
-// ─────────────────────────────────────────────────────────────────────────────
-class _ContentSheet extends StatelessWidget {
-  final dynamic report; // your Report model
-  final ThemeData theme;
-  final bool isDark;
-  final Color statusColor;
-  final Color statusBg;
-
-  const _ContentSheet({
-    required this.report,
-    required this.theme,
-    required this.isDark,
-    required this.statusColor,
-    required this.statusBg,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      // Overlap the hero image slightly
-      transform: Matrix4.translationValues(0, -28, 0),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Drag handle indicator
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(2),
+                // Description
+                const Text(
+                  'Mô tả',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: Color(0xFF94A3B8),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Category chip ─────────────────────────────
-            _CategoryChip(label: report.categoryName),
-            const SizedBox(height: 16),
-
-            // ── Report title ──────────────────────────────
-            Text(
-              report.title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.25,
-                letterSpacing: -0.3,
-              ),
-            ),
-
-            // ── Description ───────────────────────────────
-            if (report.description != null &&
-                report.description!.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Text(
-                report.description!,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  height: 1.65,
-                  color: AppColors.textSecondary,
+                const SizedBox(height: 10),
+                Text(
+                  report.description?.isNotEmpty == true
+                      ? report.description!
+                      : 'Không có mô tả chi tiết cho sự cố này.',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF475569),
+                    height: 1.55,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
 
-            const SizedBox(height: 36),
+                // Location card
+                _buildLocationCard(report),
+                const SizedBox(height: 32),
 
-            // ── Section: General Info ─────────────────────
-            _SectionLabel(label: 'Thông tin chung'),
-            const SizedBox(height: 14),
-            _InfoCard(report: report, theme: theme, isDark: isDark),
+                // Timeline
+                const Text(
+                  'Tiến trình xử lý',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildTimeline(report),
+                const SizedBox(height: 32),
 
-            // ── Section: Resolution photo ─────────────────
-            if (report.resolutionImageUrl != null) ...[
-              const SizedBox(height: 36),
-              _SectionLabel(label: 'Ảnh xác nhận hoàn thành'),
-              const SizedBox(height: 14),
-              _ResolutionImage(url: report.resolutionImageUrl!),
-            ],
+                // Get Notifications button
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã bật thông báo cho phản ánh này.'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.notifications_active_outlined,
+                        size: 20),
+                    label: const Text(
+                      'Nhận thông báo',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1D4ED8),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
 
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Info card — grouped detail rows
-// ─────────────────────────────────────────────────────────────────────────────
-class _InfoCard extends StatelessWidget {
-  final dynamic report;
-  final ThemeData theme;
-  final bool isDark;
-
-  const _InfoCard({
-    required this.report,
-    required this.theme,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <_InfoRow>[
-      _InfoRow(
-        icon: Icons.location_on_rounded,
-        iconColor: const Color(0xFFEF5350),
-        label: 'Vị trí',
-        value:
-            '${report.latitude.toStringAsFixed(5)}, ${report.longitude.toStringAsFixed(5)}',
-        subtitle: report.administrativeZoneName,
-      ),
-      if (report.priority != null)
-        _InfoRow(
-          icon: Icons.flag_rounded,
-          iconColor: AppColors.priorityColor(report.priority),
-          label: 'Mức ưu tiên',
-          value: report.priorityLabel ?? report.priority!,
-          valueColor: AppColors.priorityColor(report.priority),
-        ),
-      if (report.assignedToName != null)
-        _InfoRow(
-          icon: Icons.person_rounded,
-          iconColor: const Color(0xFF42A5F5),
-          label: 'Phụ trách',
-          value: report.assignedToName!,
-        ),
-      _InfoRow(
-        icon: Icons.calendar_today_rounded,
-        iconColor: const Color(0xFF66BB6A),
-        label: 'Ngày gửi',
-        value: Utils.formatDateTime(report.createdAt),
-      ),
-      if (report.resolvedAt != null)
-        _InfoRow(
-          icon: Icons.check_circle_rounded,
-          iconColor: AppColors.success,
-          label: 'Ngày giải quyết',
-          value: Utils.formatDateTime(report.resolvedAt!),
-          valueColor: AppColors.success,
-          isLast: true,
-        ),
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color:
-            isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF7F8FA),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.black.withOpacity(0.06),
-        ),
-      ),
-      child: Column(
-        children: [
-          for (int i = 0; i < rows.length; i++) ...[
-            _buildRow(context, rows[i], theme, isDark),
-            if (i < rows.length - 1)
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: isDark
-                    ? Colors.white.withOpacity(0.06)
-                    : Colors.black.withOpacity(0.05),
-                indent: 60,
-                endIndent: 20,
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRow(
-      BuildContext context, _InfoRow row, ThemeData theme, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Colored icon container
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: row.iconColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+                // Bottom status hint
+                Center(
+                  child: Text(
+                    _getBottomStatusText(report.currentStatus),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF94A3B8),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(row.icon, size: 18, color: row.iconColor),
           ),
-          const SizedBox(width: 14),
+        ),
+      ],
+    );
+  }
+
+  // ── Category + date row ────────────────────────────────────────────────────
+  Widget _buildCategoryRow(Report report) {
+    final dateText = DateFormat('dd/MM/yyyy').format(report.createdAt);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 2.0),
+          child: Icon(Icons.location_on_outlined,
+              size: 18, color: Color(0xFF2563EB)),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                report.categoryName ?? '',
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6.0),
+                child: Text(
+                  '•',
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                ),
+              ),
+              Text(
+                dateText,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Hero placeholder ───────────────────────────────────────────────────────
+  Widget _buildPlaceholderHero() {
+    return Container(
+      color: const Color(0xFF94A3B8),
+      child: const Center(
+        child: Icon(Icons.image_not_supported_outlined,
+            size: 48, color: Colors.white54),
+      ),
+    );
+  }
+
+  // ── Location card ──────────────────────────────────────────────────────────
+  Widget _buildLocationCard(Report report) {
+    final statusText = switch (report.currentStatus) {
+      'newly_received' => 'CHỜ PHÂN CÔNG',
+      'in_progress' => 'CHỜ XỬ LÝ',
+      'resolved' => 'ĐÃ XỬ LÝ',
+      'rejected' => 'BỊ TỪ CHỐI',
+      _ => 'KHÔNG RÕ TRẠNG THÁI',
+    };
+    final statusColor = switch (report.currentStatus) {
+      'resolved' => const Color(0xFF16A34A),
+      'rejected' => const Color(0xFFDC2626),
+      _ => const Color(0xFF2563EB),
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Map thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 88,
+              height: 88,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: LatLng(report.latitude, report.longitude),
+                  initialZoom: 15.0,
+                  interactionOptions:
+                      const InteractionOptions(flags: InteractiveFlag.none),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.cityvoice',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(report.latitude, report.longitude),
+                        width: 30,
+                        height: 30,
+                        child: const Icon(Icons.location_on,
+                            color: Colors.redAccent, size: 24),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Text
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  row.label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textHint,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.2,
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: statusColor,
+                    letterSpacing: 0.8,
+                    height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 6),
                 Text(
-                  row.value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: row.valueColor ?? theme.textTheme.bodyLarge?.color,
+                  report.administrativeZoneName ?? 'Hồ Chí Minh',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                    height: 1.2,
                   ),
                 ),
-                if (row.subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    row.subtitle!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 4),
+                Text(
+                  '${report.latitude.toStringAsFixed(5)}, '
+                  '${report.longitude.toStringAsFixed(5)}',
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
               ],
             ),
           ),
@@ -440,312 +405,322 @@ class _InfoCard extends StatelessWidget {
       ),
     );
   }
+
+  // ── Timeline builder ───────────────────────────────────────────────────────
+  Widget _buildTimeline(Report report) {
+    final s = report.currentStatus;
+
+    final _NodeStyle s0, s1, s2;
+    bool isCurrent0 = false;
+    bool isCurrent1 = false;
+    bool isCurrent2 = false;
+
+    switch (s) {
+      case 'newly_received':
+        s0 = _NodeStyle.currentBlue;
+        isCurrent0 = true;
+        s1 = _NodeStyle.pendingGrey;
+        s2 = _NodeStyle.pendingGrey;
+        break;
+      case 'in_progress':
+        s0 = _NodeStyle.doneGreen;
+        s1 = _NodeStyle.currentOrange;
+        isCurrent1 = true;
+        s2 = _NodeStyle.pendingGrey;
+        break;
+      case 'resolved':
+        s0 = _NodeStyle.doneGreen;
+        s1 = _NodeStyle.doneGreen;
+        s2 = _NodeStyle.doneGreen;
+        isCurrent2 = true;
+        break;
+      case 'rejected':
+        s0 = _NodeStyle.doneGreen;
+        s1 = _NodeStyle.doneGreen;
+        s2 = _NodeStyle.rejected;
+        isCurrent2 = true;
+        break;
+      default:
+        s0 = _NodeStyle.currentBlue;
+        isCurrent0 = true;
+        s1 = _NodeStyle.pendingGrey;
+        s2 = _NodeStyle.pendingGrey;
+    }
+
+    bool _isActive(_NodeStyle style) =>
+        style == _NodeStyle.doneGreen ||
+        style == _NodeStyle.currentBlue ||
+        style == _NodeStyle.currentOrange ||
+        style == _NodeStyle.rejected;
+
+    final line0 = _isActive(s1) ? _kGreenLine : _kGreyLine;
+    final line1 = _isActive(s2) ? _kGreenLine : _kGreyLine;
+
+    // Step 1 title
+    final step1Title =
+        report.assignedToName != null && report.assignedToName!.isNotEmpty
+            ? 'Đang xử lý - Đã giao cho ${report.assignedToName}'
+            : 'Đang xử lý';
+
+    final step1Date = (s == 'in_progress' || s == 'resolved' || s == 'rejected')
+        ? report.updatedAt
+        : null;
+
+    return Column(
+      children: [
+        _TimelineStep(
+          title: 'Mới tiếp nhận',
+          date: report.createdAt,
+          nodeStyle: s0,
+          lineColor: line0,
+          isLast: false,
+          isResolvedNode: false,
+          isCurrent: isCurrent0,
+        ),
+        _TimelineStep(
+          title: step1Title,
+          date: step1Date,
+          fallbackSubtitle: s == 'newly_received' ? 'Đang chờ phân công' : null,
+          nodeStyle: s1,
+          lineColor: line1,
+          isLast: false,
+          isResolvedNode: false,
+          isCurrent: isCurrent1,
+        ),
+        if (s != 'rejected')
+          _TimelineStep(
+            title: 'Đã xử lý',
+            date: report.resolvedAt,
+            fallbackSubtitle: s != 'resolved' ? 'Đang chờ xử lý' : null,
+            nodeStyle: s2,
+            lineColor: _kGreyLine,
+            isLast: true,
+            isResolvedNode: true,
+            isCurrent: isCurrent2,
+          )
+        else
+          _TimelineStep(
+            title: 'Từ chối',
+            date: report.resolvedAt,
+            nodeStyle: s2,
+            lineColor: _kGreyLine,
+            isLast: true,
+            isResolvedNode: false,
+            isCurrent: isCurrent2,
+          ),
+      ],
+    );
+  }
+
+  String _getBottomStatusText(String status) {
+    return switch (status) {
+      'newly_received' => 'Đang chờ phân công',
+      'in_progress' => 'Đang chờ xử lý',
+      'resolved' => 'Sự cố đã được khắc phục',
+      'rejected' => 'Sự cố đã bị từ chối',
+      _ => 'Đang chờ cập nhật',
+    };
+  }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Small reusable sub-widgets
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Floating circle icon button ──────────────────────────────────────────────
 
-/// Frosted-glass circular button used in the app bar
-class _GlassButton extends StatelessWidget {
-  final Widget child;
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
   final VoidCallback onTap;
 
-  const _GlassButton({required this.child, required this.onTap});
+  const _CircleIconButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.35),
+          color: Colors.white.withOpacity(0.20),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
-        child: child,
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
 }
 
-/// Colored status pill shown over the hero image
-class _StatusPill extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color background;
+// ─── Timeline Step Widget ─────────────────────────────────────────────────────
 
-  const _StatusPill({
-    required this.label,
-    required this.color,
-    required this.background,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: background.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-              color: color.withOpacity(0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 3)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Small pulsing dot indicator
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tinted category chip below the title
-class _CategoryChip extends StatelessWidget {
-  final String label;
-
-  const _CategoryChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.category_outlined, size: 15, color: AppColors.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.primary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Bold section label with a left accent bar
-class _SectionLabel extends StatelessWidget {
-  final String label;
-
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 18,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Resolution confirmation image with rounded corners
-class _ResolutionImage extends StatelessWidget {
-  final String url;
-
-  const _ResolutionImage({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Image.network(
-        url,
-        height: 220,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const _PlaceholderHero(height: 220),
-      ),
-    );
-  }
-}
-
-/// Placeholder shown when image fails to load
-class _PlaceholderHero extends StatelessWidget {
-  final double? height;
-
-  const _PlaceholderHero({this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      color: AppColors.surfaceVariant,
-      child: const Center(
-        child: Icon(
-          Icons.image_not_supported_rounded,
-          size: 52,
-          color: AppColors.textHint,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Full-screen states
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LoadingView extends StatelessWidget {
-  const _LoadingView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: AppColors.primary,
-        strokeWidth: 2.5,
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _ErrorView({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.wifi_off_rounded,
-                size: 44,
-                color: AppColors.error,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Đã xảy ra lỗi',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Thử lại'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyView extends StatelessWidget {
-  const _EmptyView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        'Không tìm thấy báo cáo.',
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Data model for info card rows
-// ─────────────────────────────────────────────────────────────────────────────
-class _InfoRow {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final String? subtitle;
-  final Color? valueColor;
+class _TimelineStep extends StatelessWidget {
+  final String title;
+  final DateTime? date;
+  final String? fallbackSubtitle;
+  final _NodeStyle nodeStyle;
+  final Color lineColor;
   final bool isLast;
+  final bool isResolvedNode;
+  final bool isCurrent;
 
-  const _InfoRow({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    this.subtitle,
-    this.valueColor,
-    this.isLast = false,
+  const _TimelineStep({
+    required this.title,
+    this.date,
+    this.fallbackSubtitle,
+    required this.nodeStyle,
+    required this.lineColor,
+    required this.isLast,
+    required this.isResolvedNode,
+    required this.isCurrent,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color nodeBg;
+    final Color titleColor;
+    final Color subtitleColor;
+    final IconData iconData;
+    final Color iconColor;
+
+    final double iconSize = isCurrent ? 16.0 : 12.0;
+
+    switch (nodeStyle) {
+      case _NodeStyle.doneGreen:
+        nodeBg = _kGreen;
+        titleColor = const Color(0xFF1E293B);
+        subtitleColor = const Color(0xFF94A3B8);
+        iconData = isResolvedNode ? Icons.verified_outlined : Icons.check;
+        iconColor = Colors.white;
+        break;
+      case _NodeStyle.currentBlue:
+        nodeBg = _kBlue;
+        titleColor = const Color(0xFF0F172A);
+        subtitleColor = const Color(0xFF475569);
+        iconData = Icons.check;
+        iconColor = Colors.white;
+        break;
+      case _NodeStyle.currentOrange:
+        nodeBg = _kOrange;
+        titleColor = const Color(0xFF0F172A);
+        subtitleColor = const Color(0xFF475569);
+        iconData = Icons.handyman;
+        iconColor = Colors.white;
+        break;
+      case _NodeStyle.pendingGrey:
+        nodeBg = _kGrey;
+        titleColor = const Color(0xFF94A3B8);
+        subtitleColor = const Color(0xFFCBD5E1);
+        iconData = isResolvedNode ? Icons.verified_outlined : Icons.handyman;
+        iconColor = Colors.white;
+        break;
+      case _NodeStyle.rejected:
+        nodeBg = const Color(0xFFDC2626);
+        titleColor = const Color(0xFF0F172A);
+        subtitleColor = const Color(0xFF475569);
+        iconData = Icons.close;
+        iconColor = Colors.white;
+        break;
+    }
+
+    final displaySubtitle = date != null
+        ? '${DateFormat('dd/MM/yyyy').format(date!)} • '
+            '${DateFormat('HH:mm').format(date!)}'
+        : (fallbackSubtitle ?? '');
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Left: circle node + connector ─────────────────────────────
+          SizedBox(
+            width: 40,
+            child: Column(
+              children: [
+                // Vẽ Node
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: isCurrent
+                        ? Container(
+                            // Vòng halo mờ bên ngoài cho node hiện tại
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: nodeBg.withOpacity(0.2), // Màu mờ
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Container(
+                                // Hình tròn đậm bên trong
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: nodeBg,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(iconData,
+                                    size: iconSize, color: iconColor),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            // Node bình thường (quá khứ/tương lai) sẽ nhỏ hơn
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: nodeBg,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(iconData,
+                                size: iconSize, color: iconColor),
+                          ),
+                  ),
+                ),
+                // Vẽ đường thẳng nối
+                if (!isLast)
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        color: lineColor,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ── Right: title + subtitle ────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 28.0, top: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: titleColor,
+                    ),
+                  ),
+                  if (displaySubtitle.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      displaySubtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: subtitleColor,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
