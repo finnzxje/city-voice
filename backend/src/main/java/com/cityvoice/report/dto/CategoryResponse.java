@@ -11,6 +11,7 @@ public class CategoryResponse {
     private String name;
     private String slug;
     private String iconKey;
+    private boolean isActive;
 
     public static CategoryResponse fromEntity(Category category) {
         return CategoryResponse.builder()
@@ -18,6 +19,8 @@ public class CategoryResponse {
                 .name(category.getName())
                 .slug(category.getSlug())
                 .iconKey(category.getIconKey())
+                .isActive(category.isActive())
                 .build();
     }
 }
+

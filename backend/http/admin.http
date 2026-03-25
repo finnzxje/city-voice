@@ -1,0 +1,186 @@
+### CityVoice – Admin API Tests (User Role Management + Category Management)
+### Compatible with: IntelliJ HTTP Client, VS Code REST Client
+### Base URL: http://localhost:8080/api
+
+@baseUrl = http://localhost:8080/api
+@adminEmail = admin@cityvoice.vn
+@adminPassword = Admin@123
+
+# ─── 0. AUTHENTICATE AS ADMIN ────────────────────────────────────────────────
+# Run this first to get the admin access token.
+
+### 0a. Admin login (saves access token globally)
+# @name adminLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("adminToken", response.body.data.accessToken);
+  client.test("Login OK", () => client.assert(response.status === 200));
+%}
+
+
+# ─── 1. USER ROLE MANAGEMENT ─────────────────────────────────────────────────
+
+### 1a. List all available roles
+GET {{baseUrl}}/admin/roles
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 1b. List all users (Admin only)
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 1b. Promote a citizen to staff
+# Replace <userId> with the actual UUID of the citizen from the DB.
+PUT {{baseUrl}}/admin/users/a26871a5-37fe-4f17-a055-eb5f0a43ddb6/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "staff"
+}
+
+###
+
+### 1c. Demote a staff back to citizen
+PUT {{baseUrl}}/admin/users/a26871a5-37fe-4f17-a055-eb5f0a43ddb6/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "citizen"
+}
+
+###
+
+### 1d. Assign manager role
+PUT {{baseUrl}}/admin/users/a26871a5-37fe-4f17-a055-eb5f0a43ddb6/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "manager"
+}
+
+###
+
+### 1e. Update role without token – expect 403
+PUT {{baseUrl}}/admin/users/<userId>/role
+Content-Type: application/json
+
+{
+  "role": "staff"
+}
+
+###
+
+### 1f. Update role with invalid userId – expect 404
+PUT {{baseUrl}}/admin/users/00000000-0000-0000-0000-000000000000/role
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "role": "staff"
+}
+
+
+# ─── 2. CATEGORY MANAGEMENT ──────────────────────────────────────────────────
+
+### 2a. Create a new category (Admin only)
+# @name createCategory
+POST {{baseUrl}}/categories
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Whoops",
+  "slug": "whoops",
+  "iconKey": "icon-whoops",
+  "active": true
+}
+
+> {%
+  client.global.set("categoryId", response.body.data.id);
+  client.test("Category created", () => client.assert(response.status === 201));
+%}
+
+###
+
+### 2b. Duplicate slug – expect 409
+POST {{baseUrl}}/categories
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Pothole Duplicate",
+  "slug": "pothole",
+  "active": true
+}
+
+###
+
+### 2c. Update an existing category (rename + keep active)
+PUT {{baseUrl}}/categories/9
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Road Pothole",
+  "slug": "test",
+  "iconKey": "icon-road-pothole",
+  "active": true
+}
+
+###
+
+### 2d. Disable a category (soft-delete via active = false)
+PUT {{baseUrl}}/categories/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Road Pothole",
+  "slug": "pothole",
+  "iconKey": "icon-road-pothole",
+  "active": false
+}
+
+###
+
+### 2e. Verify disabled category is excluded from public list
+# Expect: the disabled category is NOT in the result.
+GET {{baseUrl}}/categories
+
+###
+
+### 2f. Create category without token – expect 403
+POST {{baseUrl}}/categories
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Category",
+  "slug": "unauthorized",
+  "active": true
+}
+
+###
+
+### 2g. Update non-existent category – expect 404
+PUT {{baseUrl}}/categories/9999
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Ghost",
+  "slug": "ghost",
+  "active": true
+}
