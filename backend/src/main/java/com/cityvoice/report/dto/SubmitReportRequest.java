@@ -11,25 +11,25 @@ import org.springframework.web.multipart.MultipartFile;
 @Data
 public class SubmitReportRequest {
 
-    @NotBlank(message = "Title is required")
-    @Size(max = 500, message = "Title cannot exceed 500 characters")
+    @NotBlank(message = "Tiêu đề không được để trống.")
+    @Size(max = 500, message = "Tiêu đề không được vượt quá 500 ký tự.")
     private String title;
 
     private String description;
 
-    @NotNull(message = "Category is required")
+    @NotNull(message = "Danh mục không được để trống.")
     private Integer categoryId;
 
-    @NotNull(message = "Latitude is required")
-    @Min(value = -90, message = "Latitude must be between -90 and 90")
-    @Max(value = 90, message = "Latitude must be between -90 and 90")
+    @NotNull(message = "Vĩ độ không được để trống.")
+    @Min(value = -90, message = "Vĩ độ phải nằm trong khoảng từ -90 đến 90.")
+    @Max(value = 90, message = "Vĩ độ phải nằm trong khoảng từ -90 đến 90.")
     private Double latitude;
 
-    @NotNull(message = "Longitude is required")
-    @Min(value = -180, message = "Longitude must be between -180 and 180")
-    @Max(value = 180, message = "Longitude must be between -180 and 180")
+    @NotNull(message = "Kinh độ không được để trống.")
+    @Min(value = -180, message = "Kinh độ phải nằm trong khoảng từ -180 đến 180.")
+    @Max(value = 180, message = "Kinh độ phải nằm trong khoảng từ -180 đến 180.")
     private Double longitude;
 
-    @NotNull(message = "Image is required")
+    @NotNull(message = "Ảnh không được để trống.")
     private MultipartFile image;
 }

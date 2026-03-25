@@ -1,3 +1,4 @@
+.agents
 ### Java / Maven ###
 target/
 pom.xml.tag

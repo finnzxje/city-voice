@@ -69,7 +69,8 @@ public class MinioStorageService implements StorageService {
     public String store(MultipartFile file, String prefix) {
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid image type. Allowed: JPG, PNG, WEBP");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Loại ảnh không hợp lệ. Chỉ chấp nhận JPG, PNG, WEBP.");
         }
 
         try {
@@ -93,7 +94,7 @@ public class MinioStorageService implements StorageService {
 
         } catch (Exception e) {
             log.error("Failed to store file in MinIO", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload file");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Tải tệp lên thất bại.");
         }
     }
 

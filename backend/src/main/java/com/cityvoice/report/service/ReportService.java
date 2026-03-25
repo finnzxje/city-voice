@@ -67,14 +67,14 @@ public class ReportService {
                 Category category = categoryRepository.findById(request.getCategoryId())
                                 .filter(Category::isActive)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                                "Invalid or inactive category"));
+                                                "Danh mục không hợp lệ hoặc đã ngừng hoạt động."));
 
                 // 2. ST_Contains against overall HCMC boundary
                 boolean isInsideCity = zoneRepository.isWithinCityBoundary(request.getLongitude(),
                                 request.getLatitude());
                 if (!isInsideCity) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                                        "Incident location is outside Ho Chi Minh City bounds");
+                                        "Vị trí sự cố nằm ngoài phạm vi TP. Hồ Chí Minh.");
                 }
 
                 // 3. Find matching district (can be null if inside city bbox but outside
@@ -129,12 +129,13 @@ public class ReportService {
         public ReportResponse getReportById(UUID reportId, User currentContextUser) {
                 Report report = reportRepository.findById(reportId)
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Report not found"));
+                                                "Báo cáo không tồn tại."));
 
                 // Citizens can only view their own reports. Staff/managers/admins can view any.
                 if (currentContextUser.getRole() == UserRole.citizen) {
                         if (!report.getCitizen().getId().equals(currentContextUser.getId())) {
-                                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this report");
+                                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                                "Bạn không có quyền truy cập báo cáo này.");
                         }
                 }
 

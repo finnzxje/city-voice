@@ -9,10 +9,10 @@ import java.util.UUID;
 @Data
 public class ReviewReportRequest {
 
-    @NotNull(message = "Priority is required")
+    @NotNull(message = "Mức độ ưu tiên không được để trống.")
     private PriorityLevel priority;
 
-    @NotNull(message = "Assigned user is required")
+    @NotNull(message = "Người được giao không được để trống.")
     private UUID assignedTo;
 
     private String note;
