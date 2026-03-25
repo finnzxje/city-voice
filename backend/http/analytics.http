@@ -1,0 +1,111 @@
+### CityVoice – Analytics API Tests
+### Compatible with: IntelliJ HTTP Client, VS Code REST Client, kulala.nvim
+### Base URL: http://localhost:8080/api
+###
+### ⚠ SETUP ORDER:
+###   1. Run "0. Admin Login" → adminToken stored globally
+###   2. Run tests in section order
+###
+### NOTE: All analytics endpoints require MANAGER or ADMIN roles.
+
+@baseUrl = http://localhost:8080/api
+@adminEmail = admin@cityvoice.vn
+@adminPassword = Admin@123
+
+# ─── 0. TOKEN SETUP ──────────────────────────────────────────────────────────
+
+### 0. Admin login (stores adminToken globally)
+# @name adminLogin
+POST {{baseUrl}}/auth/staff/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("adminToken", response.body.data.accessToken);
+  client.test("Login OK",       () => client.assert(response.status === 200));
+  client.test("Has accessToken",() => client.assert(response.body.data.accessToken !== ""));
+%}
+
+
+# ─── 1. HEATMAP ──────────────────────────────────────────────────────────────
+
+### 1a. Get heatmap data (All reports)
+GET {{baseUrl}}/analytics/heatmap
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200",    () => client.assert(response.status === 200));
+  client.test("Returns array", () => client.assert(Array.isArray(response.body.data)));
+%}
+
+###
+
+### 1b. Get heatmap data (Filtered by Priority: high)
+GET {{baseUrl}}/analytics/heatmap?priority=high
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 1c. Get heatmap data (Filtered by Date Range and Category)
+# Note: Adjust dates and categoryId based on your database contents
+GET {{baseUrl}}/analytics/heatmap?from=2023-01-01&to=2024-12-31&categoryId=1
+Authorization: Bearer {{adminToken}}
+
+
+# ─── 2. AGGREGATED STATS ─────────────────────────────────────────────────────
+
+### 2a. Get aggregated statistics (All reports)
+GET {{baseUrl}}/analytics/stats
+Authorization: Bearer {{adminToken}}
+
+> {%
+  client.test("Status 200",          () => client.assert(response.status === 200));
+  client.test("Has totalReports",    () => client.assert(response.body.data.totalReports !== undefined));
+  client.test("Has completionRate",  () => client.assert(response.body.data.completionRate !== undefined));
+%}
+
+###
+
+### 2b. Get aggregated statistics (Filtered by Zone)
+# Note: Adjust zoneId based on your database contents
+GET {{baseUrl}}/analytics/stats?zoneId=1
+Authorization: Bearer {{adminToken}}
+
+
+# ─── 3. EXPORTS (EXCEL & PDF) ────────────────────────────────────────────────
+# ⚠ NOTE: Downloading binary files via raw .http blocks can result in corrupted
+# output depending on the HTTP client. 
+# In IntelliJ: Right-click response window -> "Save as file"
+# Or use the curl commands provided below.
+
+### 3a. Export to Excel (All reports) - Returns binary .xlsx file
+GET {{baseUrl}}/analytics/export/excel
+Authorization: Bearer {{adminToken}}
+Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+###
+# curl -s -X GET http://localhost:8080/api/analytics/export/excel \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" > reports_export.xlsx
+
+### 3b. Export to Excel (Filtered by Priority: high)
+GET {{baseUrl}}/analytics/export/excel?priority=high
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 3c. Export to PDF (All reports) - Returns binary .pdf file
+GET {{baseUrl}}/analytics/export/pdf
+Authorization: Bearer {{adminToken}}
+Accept: application/pdf
+
+###
+# curl -s -X GET http://localhost:8080/api/analytics/export/pdf \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" > reports_export.pdf
+
+### 3d. Export to PDF (Filtered by Date Range)
+GET {{baseUrl}}/analytics/export/pdf?from=2023-01-01&to=2024-12-31
+Authorization: Bearer {{adminToken}}
