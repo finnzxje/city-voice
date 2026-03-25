@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 public class RejectReportRequest {
 
-    @NotBlank(message = "A rejection note/reason is required")
+    @NotBlank(message = "Lý do từ chối không được để trống.")
     private String note;
 }

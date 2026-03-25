@@ -36,7 +36,7 @@ public class AuthService {
     @Transactional
     public void registerCitizen(CitizenRegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã được đăng ký.");
         }
         User user = User.builder()
                 .email(request.email())
@@ -56,10 +56,10 @@ public class AuthService {
     public void verifyEmail(OtpVerifyRequest request) {
         User user = findActiveOrInactiveUserByEmail(request.email());
         if (user.isActive()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account already verified");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tài khoản đã được xác thực.");
         }
         if (!otpService.verifyOtp(user, request.otp(), OtpType.email_verification)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired OTP");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
         user.setActive(true);
         userRepository.save(user);
@@ -69,7 +69,7 @@ public class AuthService {
     public void resendVerificationOtp(OtpRequest request) {
         User user = findActiveOrInactiveUserByEmail(request.email());
         if (user.isActive()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account already verified");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tài khoản đã được xác thực.");
         }
         otpService.sendVerificationOtp(user);
     }
@@ -79,7 +79,7 @@ public class AuthService {
     public TokenResponse citizenLoginWithPassword(LoginRequest request) {
         User user = findActiveCitizenByEmail(request.email());
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Thông tin đăng nhập không hợp lệ.");
         }
         return issueTokens(user);
     }
@@ -96,7 +96,7 @@ public class AuthService {
     public TokenResponse verifyLoginOtp(OtpVerifyRequest request) {
         User user = findActiveCitizenByEmail(request.email());
         if (!otpService.verifyOtp(user, request.otp(), OtpType.login)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired OTP");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Mã OTP không hợp lệ hoặc đã hết hạn.");
         }
         return issueTokens(user);
     }
@@ -106,13 +106,13 @@ public class AuthService {
     public TokenResponse staffLogin(LoginRequest request) {
         User user = findUserByEmail(request.email());
         if (user.getRole() == UserRole.citizen) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Use citizen login endpoint");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vui lòng sử dụng cổng đăng nhập dành cho công dân.");
         }
         if (!user.isActive()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is disabled");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản đã bị vô hiệu hóa.");
         }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Thông tin đăng nhập không hợp lệ.");
         }
         return issueTokens(user);
     }
@@ -122,13 +122,14 @@ public class AuthService {
     @Transactional
     public TokenResponse refreshTokens(RefreshRequest request) {
         if (!jwtUtil.validateRefreshToken(request.refreshToken())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token không hợp lệ.");
         }
         RefreshToken stored = refreshTokenRepository.findByToken(request.refreshToken())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không tìm thấy refresh token."));
 
         if (!stored.isValid()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token expired or revoked");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Refresh token đã hết hạn hoặc bị thu hồi.");
         }
         // Rotate: revoke old token, issue new pair
         stored.setRevokedAt(OffsetDateTime.now());
@@ -166,23 +167,23 @@ public class AuthService {
 
     private User findUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng."));
     }
 
     private User findActiveCitizenByEmail(String email) {
         User user = findUserByEmail(email);
         if (user.getRole() != UserRole.citizen) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Use staff login endpoint");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vui lòng sử dụng cổng đăng nhập dành cho nhân viên.");
         }
         if (!user.isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Account not verified. Please verify your email first");
+                    "Tài khoản chưa được xác thực. Vui lòng xác thực email trước.");
         }
         return user;
     }
 
     private User findActiveOrInactiveUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng."));
     }
 }
