@@ -18,6 +18,10 @@ import SubmitReport from "./pages/citizen/SubmitReport";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffReportDetails from "./pages/staff/ReportDetails";
 
+// Manager & Admin Pages
+import ManagerDashboard from "./pages/manager/Dashboard";
+import AdminDashboard from "./pages/admin/Dashboard";
+
 const ProtectedRoute = ({
   children,
   allowedRoles,
@@ -68,7 +72,10 @@ function AppRoutes() {
         path="/" 
         element={
           isAuthenticated ? (
-            user?.role === "citizen" ? <CitizenDashboard /> : <StaffDashboard />
+            user?.role === "citizen" ? <CitizenDashboard /> :
+            user?.role === "manager" ? <ManagerDashboard /> :
+            user?.role === "admin" ? <AdminDashboard /> :
+            <StaffDashboard />
           ) : (
             <Landing />
           )
