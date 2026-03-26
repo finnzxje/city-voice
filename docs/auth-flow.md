@@ -122,10 +122,17 @@ Body: { "email": "...", "password": "..." }
 }
 ```
 
-> **Default Admin** (created on first startup):  
-> Email: `admin@cityvoice.vn`  
-> Password: configurable via `ADMIN_PASSWORD` env var (default: `Admin@123`)  
-> ⚠️ Change this immediately in production.
+> **Default Seeded Accounts** (created on first startup for development):
+> 
+> | Role | Email | Password |
+> |---|---|---|
+> | **ADMIN** | `admin@cityvoice.vn` | `Admin@123` |
+> | **MANAGER** | `manager@cityvoice.vn` | `Manager@123` |
+> | **STAFF** | `staff@cityvoice.vn` | `Staff@123` |
+> | **CITIZEN** | `citizen@cityvoice.vn` | `Citizen@123` |
+> 
+> *(Admins/Managers/Staff log in via Password. Citizens usually log in via OTP, but can use the hashed password if testing API bypasses).*
+> ⚠️ **Change the Admin password immediately in production.**
 
 ---
 

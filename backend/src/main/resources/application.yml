@@ -76,6 +76,10 @@ app:
       email: ${SEED_STAFF_EMAIL:staff@cityvoice.vn}
       password: ${SEED_STAFF_PASSWORD:Staff@123}
       full-name: "Test Staff"
+    manager:
+      email: ${SEED_MANAGER_EMAIL:manager@cityvoice.vn}
+      password: ${SEED_MANAGER_PASSWORD:Manager@123}
+      full-name: "Test Manager"
 
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
