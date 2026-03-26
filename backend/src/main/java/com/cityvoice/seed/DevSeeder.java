@@ -42,10 +42,20 @@ public class DevSeeder implements CommandLineRunner {
     @Value("${app.seed.staff.full-name}")
     private String staffFullName;
 
+    @Value("${app.seed.manager.email}")
+    private String managerEmail;
+
+    @Value("${app.seed.manager.password}")
+    private String managerPassword;
+
+    @Value("${app.seed.manager.full-name}")
+    private String managerFullName;
+
     @Override
     public void run(String... args) {
         seedCitizen();
         seedStaff();
+        seedManager();
     }
 
     private void seedCitizen() {
@@ -78,5 +88,21 @@ public class DevSeeder implements CommandLineRunner {
                 .build();
         userRepository.save(staff);
         log.info("[DevSeeder] Test staff created: {}", staffEmail);
+    }
+
+    private void seedManager() {
+        if (userRepository.existsByEmail(managerEmail)) {
+            log.info("[DevSeeder] Test manager already exists: {}", managerEmail);
+            return;
+        }
+        User manager = User.builder()
+                .email(managerEmail)
+                .fullName(managerFullName)
+                .passwordHash(passwordEncoder.encode(managerPassword))
+                .role(UserRole.manager)
+                .active(true)
+                .build();
+        userRepository.save(manager);
+        log.info("[DevSeeder] Test manager created: {}", managerEmail);
     }
 }
