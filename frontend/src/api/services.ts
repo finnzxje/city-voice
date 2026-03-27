@@ -99,3 +99,44 @@ export const IncidentAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 };
+
+export interface HeatmapPoint {
+  latitude: number;
+  longitude: number;
+  priority: string;
+  category: string;
+}
+
+export interface AnalyticsStats {
+  totalReports: number;
+  newlyReceived: number;
+  inProgress: number;
+  resolved: number;
+  rejected: number;
+  completionRate: number;
+  averageResolutionHours: number;
+  byCategory: Record<string, number>;
+  byPriority: Record<string, number>;
+  byZone: Record<string, number>;
+}
+
+export const AnalyticsAPI = {
+  getHeatmap: (params?: any) => 
+    apiClient.get<ApiResponse<HeatmapPoint[]>>("/analytics/heatmap", { params }),
+
+  getStats: (params?: any) => 
+    apiClient.get<ApiResponse<AnalyticsStats>>("/analytics/stats", { params }),
+};
+
+export const AdminAPI = {
+  getRoles: () => apiClient.get<ApiResponse<string[]>>("/admin/roles"),
+  getUsers: () => apiClient.get<ApiResponse<UserInfo[]>>("/admin/users"),
+  updateUserRole: (userId: string, role: string) => 
+    apiClient.put(`/admin/users/${userId}/role`, { role }),
+    
+  createCategory: (data: { name: string; slug: string; iconKey: string; active?: boolean }) => 
+    apiClient.post("/categories", data),
+  updateCategory: (id: number, data: Partial<{ name: string; slug: string; iconKey: string; active: boolean }>) => 
+    apiClient.put(`/categories/${id}`, data)
+};
+
