@@ -60,8 +60,8 @@ apiClient.interceptors.response.use(
       } else {
         // No refresh token available
         clearTokens();
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
+        if (window.location.pathname !== "/") {
+          window.location.href = "/";
         }
       }
     }

@@ -10,7 +10,7 @@ import VerifyEmail from "./pages/auth/VerifyEmail";
 import Landing from "./pages/Landing";
 
 // Citizen Pages
-import CitizenDashboard from "./pages/citizen/Dashboard";
+import CitizenDashboard from "./pages/citizen/DashboardCitizen";
 import CitizenReportDetails from "./pages/citizen/ReportDetails";
 import SubmitReport from "./pages/citizen/SubmitReport";
 
@@ -21,6 +21,8 @@ import StaffReportDetails from "./pages/staff/ReportDetails";
 // Manager & Admin Pages
 import ManagerDashboard from "./pages/manager/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
+import Home from "./pages/Home";
+import DashboardCitizen from "./pages/citizen/DashboardCitizen";
 
 const ProtectedRoute = ({
   children,
@@ -66,20 +68,20 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
-
+      <Route path="/dashboard-citizen" element={<DashboardCitizen />} />
       {/* Public Landing or Protected Dashboard */}
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
           isAuthenticated ? (
             user?.role === "citizen" ? <CitizenDashboard /> :
-            user?.role === "manager" ? <ManagerDashboard /> :
-            user?.role === "admin" ? <AdminDashboard /> :
-            <StaffDashboard />
+              user?.role === "manager" ? <ManagerDashboard /> :
+                user?.role === "admin" ? <AdminDashboard /> :
+                  <StaffDashboard />
           ) : (
-            <Landing />
+            <Home />
           )
-        } 
+        }
       />
 
       <Route

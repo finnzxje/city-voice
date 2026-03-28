@@ -1,12 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Outfit", system-ui, sans-serif;
+  --font-sans: "Quicksand", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Nunito", sans-serif;
+
+  --color-primary: #0061f2;
+  --color-primary-container: #e0e9ff;
+  --color-on-primary: #ffffff;
+
+  --color-surface: #f8faff;
+  --color-surface-container-low: #f0f4ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #e8eeff;
+  --color-surface-container-highest: #dfe7ff;
+
+  --color-on-surface: #1a2b4b;
+  --color-on-surface-variant: #5c6d8c;
+
+  --color-outline-variant: #d1d9e6;
+
+  --color-error: #ff5252;
+  --color-error-container: #ffe0e0;
 }
 
+/* FIX: nên dùng @layer base + tránh @apply với var() */
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    @apply antialiased;
+  }
+}
+
+/* Animation + utilities */
 @layer utilities {
   .animate-fade-in-down {
     animation: fade-in-down 0.3s ease-out forwards;
+  }
+
+  /* FIX: đưa no-scrollbar vào utilities */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
@@ -15,13 +55,16 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* Base resets & styles */
-body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+/* giữ nguyên */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
