@@ -23,12 +23,12 @@ const Header = () => {
                             <Link to="/reports/new" className="text-slate-600 hover:text-primary transition-colors">Báo cáo</Link>
                         </>
                     )}
-                    {user?.role === "staff" && (
+                    {/* {user?.role === "staff" && (
                         <Link to="/staff/dashboard" className="text-slate-600 hover:text-primary transition-colors">Dashboard</Link>
                     )}
                     {(user?.role === "manager" || user?.role === "admin") && (
                         <Link to="/manager/dashboard" className="text-slate-600 hover:text-primary transition-colors">Dashboard</Link>
-                    )}
+                    )} */}
                 </nav>
 
                 <div className="flex items-center gap-4">

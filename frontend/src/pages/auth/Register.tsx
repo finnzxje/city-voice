@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthAPI } from "../../api/services";
 import toast from "react-hot-toast";
-import { AlertCircle, User, Mail, Lock, Phone } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import AuthLayout from "../../layouts/AuthLayout";
 
 export default function Register() {
