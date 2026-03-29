@@ -6,7 +6,7 @@ export default function QuickTips() {
       <div className="lg:w-2/3">
         <h3 className="text-xl font-bold font-headline mb-6">Hướng dẫn Quy trình Xử lý</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="group p-5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-md">
+          <div className="group p-5 rounded-xl bg-linear-to-br from-primary to-primary-container text-on-primary shadow-md">
             <Rocket className="h-8 w-8 mb-4 opacity-90" />
             <h4 className="text-lg font-bold mb-2 font-headline">Ưu tiên Critical</h4>
             <p className="text-sm opacity-90 leading-relaxed font-medium">Đối với các sự cố Critical, nhân viên phải phản hồi trong vòng 15 phút và thực hiện phân công ngay lập tức cho đội hiện trường.</p>
