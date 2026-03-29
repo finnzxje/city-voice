@@ -24,6 +24,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import Home from "./pages/Home";
 import UsersTab from "./pages/admin/components/UsersTab";
 import CategoriesTab from "./pages/admin/components/CategoriesTab";
+import HeaderManager from "./pages/manager/HeaderManager";
 
 const ProtectedRoute = ({
   children,
@@ -98,10 +99,13 @@ function AppRoutes() {
         path="/manager"
         element={
           <ProtectedRoute allowedRoles={["manager"]}>
-            <ManagerDashboard />
+            <HeaderManager />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="/manager/dashboard" replace />} />
+        <Route path="dashboard" element={<ManagerDashboard />} />
+      </Route>
       <Route
         path="/staff"
         element={

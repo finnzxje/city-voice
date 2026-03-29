@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from "react";
-import { useAuth } from "../../contexts/AuthContext";
 import {
   AnalyticsAPI,
   IncidentAPI,
@@ -15,7 +14,6 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  LogOut,
   FileSpreadsheet,
   FileText,
   Filter,
@@ -26,30 +24,30 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import IncidentHeatmap from "../../components/IncidentHeatmap";
+import HeaderManager from "./HeaderManager";
 
 
 
 /* ─── Priority config ───────────────────────────────────────────── */
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   critical: { label: "Nghiêm trọng", color: "bg-red-500", bg: "bg-red-50 text-red-700 border-red-200" },
-  high:     { label: "Cao",          color: "bg-orange-500", bg: "bg-orange-50 text-orange-700 border-orange-200" },
-  medium:   { label: "Trung bình",   color: "bg-amber-400", bg: "bg-amber-50 text-amber-700 border-amber-200" },
-  low:      { label: "Thấp",         color: "bg-sky-400", bg: "bg-sky-50 text-sky-700 border-sky-200" },
+  high: { label: "Cao", color: "bg-orange-500", bg: "bg-orange-50 text-orange-700 border-orange-200" },
+  medium: { label: "Trung bình", color: "bg-amber-400", bg: "bg-amber-50 text-amber-700 border-amber-200" },
+  low: { label: "Thấp", color: "bg-sky-400", bg: "bg-sky-50 text-sky-700 border-sky-200" },
 };
 
 /* ─── Status config ────────────────────────────────────────────── */
 const STATUS_CONFIG: Record<string, { label: string; dot: string }> = {
   newly_received: { label: "Mới tiếp nhận", dot: "bg-yellow-400" },
-  in_progress:    { label: "Đang xử lý",    dot: "bg-blue-500" },
-  resolved:       { label: "Đã giải quyết",  dot: "bg-emerald-500" },
-  rejected:       { label: "Từ chối",         dot: "bg-red-500" },
+  in_progress: { label: "Đang xử lý", dot: "bg-blue-500" },
+  resolved: { label: "Đã giải quyết", dot: "bg-emerald-500" },
+  rejected: { label: "Từ chối", dot: "bg-red-500" },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
    MANAGER DASHBOARD
    ═══════════════════════════════════════════════════════════════════ */
 export default function ManagerDashboard() {
-  const { user, logout } = useAuth();
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [heatmapPoints, setHeatmapPoints] = useState<HeatmapPoint[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -67,7 +65,7 @@ export default function ManagerDashboard() {
   useEffect(() => {
     IncidentAPI.getCategories()
       .then((res) => { if (res.data?.data) setCategories(res.data.data); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -204,46 +202,8 @@ export default function ManagerDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-purple-50/30 flex flex-col">
-      {/* ══ HEADER ══ */}
-      <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/60 sticky top-0 z-30">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg shadow-purple-200">
-                <BarChart3 className="text-white h-5 w-5" />
-              </div>
-              <div>
-                <span className="font-bold text-lg text-gray-900 tracking-tight block leading-tight">
-                  CityVoice
-                </span>
-                <span className="text-[10px] uppercase tracking-widest text-purple-600 font-semibold">
-                  Analytics
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 bg-gray-100/80 px-3 py-1.5 rounded-lg">
-                <div className="h-7 w-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs uppercase">
-                  {user?.fullName?.substring(0, 2) || user?.email?.substring(0, 2)}
-                </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {user?.fullName || user?.email}
-                </span>
-              </div>
-              <button
-                onClick={logout}
-                className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                title="Đăng xuất"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* ══ MAIN ══ */}
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 w-full space-y-6">
 
         {/* ── Title + Actions ── */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -256,16 +216,15 @@ export default function ManagerDashboard() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                showFilters || activeFilterCount > 0
-                  ? "bg-purple-50 text-purple-700 border-purple-200 shadow-sm"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${showFilters || activeFilterCount > 0
+                ? "bg-primary text-white border-primary shadow-sm"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
             >
               <Filter className="h-4 w-4" />
               Bộ lọc
               {activeFilterCount > 0 && (
-                <span className="ml-1 bg-purple-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center">
+                <span className="ml-1 bg-primary text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
@@ -290,7 +249,7 @@ export default function ManagerDashboard() {
           <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl shadow-sm border border-gray-200/80 animate-in slide-in-from-top-2 duration-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Filter className="h-4 w-4 text-purple-500" /> Bộ lọc dữ liệu
+                <Filter className="h-4 w-4 text-primary" /> Bộ lọc dữ liệu
               </h3>
               {activeFilterCount > 0 && (
                 <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
@@ -303,21 +262,21 @@ export default function ManagerDashboard() {
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Từ ngày</label>
                 <input type="date" value={filters.from}
                   onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-shadow"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-shadow"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Đến ngày</label>
                 <input type="date" value={filters.to}
                   onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-shadow"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-shadow"
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Mức độ ưu tiên</label>
                 <select value={filters.priority}
                   onChange={(e) => setFilters((p) => ({ ...p, priority: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-shadow bg-white"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-shadow bg-white"
                 >
                   <option value="">Tất cả</option>
                   <option value="critical">🔴 Nghiêm trọng</option>
@@ -330,7 +289,7 @@ export default function ManagerDashboard() {
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Danh mục</label>
                 <select value={filters.categoryId}
                   onChange={(e) => setFilters((p) => ({ ...p, categoryId: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-shadow bg-white"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-shadow bg-white"
                 >
                   <option value="">Tất cả</option>
                   {categories.map((c) => (
@@ -342,7 +301,7 @@ export default function ManagerDashboard() {
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Zone ID</label>
                 <input type="number" placeholder="VD: 1" value={filters.zoneId}
                   onChange={(e) => setFilters((p) => ({ ...p, zoneId: e.target.value }))}
-                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 outline-none transition-shadow"
+                  className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-shadow"
                 />
               </div>
             </div>
@@ -351,7 +310,7 @@ export default function ManagerDashboard() {
 
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-3">
-            <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-gray-200 border-t-purple-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-gray-200 border-t-primary"></div>
             <p className="text-sm text-gray-400">Đang tải dữ liệu...</p>
           </div>
         ) : stats ? (
@@ -361,7 +320,7 @@ export default function ManagerDashboard() {
               {/* Total */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-100 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-linear-to-br from-indigo-50 to-violet-100 flex items-center justify-center">
                     <Layers className="h-5 w-5 text-indigo-600" />
                   </div>
                   <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -375,7 +334,7 @@ export default function ManagerDashboard() {
               {/* Resolved */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-50 to-green-100 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-linear-to-br from-emerald-50 to-green-100 flex items-center justify-center">
                     <CheckCircle className="h-5 w-5 text-emerald-600" />
                   </div>
                 </div>
@@ -391,7 +350,7 @@ export default function ManagerDashboard() {
               {/* Resolution Time */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-50 to-blue-100 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-linear-to-br from-sky-50 to-blue-100 flex items-center justify-center">
                     <Clock className="h-5 w-5 text-sky-600" />
                   </div>
                 </div>
@@ -405,7 +364,7 @@ export default function ManagerDashboard() {
               {/* In Progress */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-50 to-yellow-100 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-xl bg-linear-to-br from-amber-50 to-yellow-100 flex items-center justify-center">
                     <Activity className="h-5 w-5 text-amber-600" />
                   </div>
                 </div>
@@ -422,7 +381,7 @@ export default function ManagerDashboard() {
               {/* Status Donut Chart */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-5 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-500" />
+                  <Activity className="h-4 w-4 text-primary" />
                   Phân bố Trạng thái
                 </h3>
                 <StatusDonut />
@@ -431,7 +390,7 @@ export default function ManagerDashboard() {
               {/* By Zone */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-5 flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-purple-500" />
+                  <MapPin className="h-4 w-4 text-primary" />
                   Top Khu vực
                 </h3>
                 <div className="space-y-3">
@@ -439,11 +398,11 @@ export default function ManagerDashboard() {
                     <div key={idx}>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-gray-600 truncate mr-2">{zone}</span>
-                        <span className="font-semibold text-gray-900 flex-shrink-0">{count}</span>
+                        <span className="font-semibold text-gray-900 shrink-0">{count}</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-1.5">
                         <div
-                          className="bg-gradient-to-r from-purple-400 to-violet-500 h-1.5 rounded-full transition-all duration-500"
+                          className="bg-linear-to-r from-primary to-primary-container h-1.5 rounded-full transition-all duration-500"
                           style={{ width: `${Math.max((count / stats.totalReports) * 100, 4)}%` }}
                         />
                       </div>
@@ -461,7 +420,7 @@ export default function ManagerDashboard() {
               {/* By Priority */}
               <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-5 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-purple-500" />
+                  <AlertCircle className="h-4 w-4 text-primary" />
                   Mức độ Ưu tiên
                 </h3>
                 <div className="space-y-3">
@@ -488,13 +447,13 @@ export default function ManagerDashboard() {
             {Object.keys(stats.byCategory || {}).length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-5 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-purple-500" />
+                  <BarChart3 className="h-4 w-4 text-primary" />
                   Phân loại theo Danh mục
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]).map(([cat, count], idx) => {
                     const catColors = [
-                      "from-violet-500 to-purple-600",
+                      "from-primary to-primary-container",
                       "from-sky-500 to-blue-600",
                       "from-emerald-500 to-green-600",
                       "from-amber-500 to-orange-600",
@@ -503,7 +462,7 @@ export default function ManagerDashboard() {
                     ];
                     return (
                       <div key={idx} className="relative overflow-hidden bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow group">
-                        <div className={`absolute top-0 left-0 h-1 w-full bg-gradient-to-r ${catColors[idx % catColors.length]}`} />
+                        <div className={`absolute top-0 left-0 h-1 w-full bg-linear-to-r ${catColors[idx % catColors.length]}`} />
                         <p className="text-2xl font-extrabold text-gray-900 mb-1">{count}</p>
                         <p className="text-xs text-gray-500 font-medium truncate">{cat}</p>
                       </div>
