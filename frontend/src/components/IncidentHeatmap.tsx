@@ -65,8 +65,8 @@ function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
     const heatData = points.map((p) => {
       const weight =
         p.priority === "critical" ? 1.0 :
-        p.priority === "high" ? 0.75 :
-        p.priority === "medium" ? 0.5 : 0.3;
+          p.priority === "high" ? 0.75 :
+            p.priority === "medium" ? 0.5 : 0.3;
       return [p.latitude, p.longitude, weight] as [number, number, number];
     });
 
@@ -143,7 +143,7 @@ export default function IncidentHeatmap({ points }: IncidentHeatmapProps) {
       {/* ── Header ─── */}
       <div className="px-5 py-3.5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-purple-500" />
+          <MapPin className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold text-gray-900">
             Bản đồ Sự cố
           </h3>
@@ -167,31 +167,28 @@ export default function IncidentHeatmap({ points }: IncidentHeatmapProps) {
           <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs font-medium">
             <button
               onClick={() => setViewMode("heatmap")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                viewMode === "heatmap"
-                  ? "bg-white text-purple-700 shadow-sm"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === "heatmap"
+                  ? "bg-white text-primary shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
-              }`}
+                }`}
             >
               <Flame className="h-3.5 w-3.5" /> Nhiệt
             </button>
             <button
               onClick={() => setViewMode("markers")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                viewMode === "markers"
-                  ? "bg-white text-purple-700 shadow-sm"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === "markers"
+                  ? "bg-white text-primary shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
-              }`}
+                }`}
             >
               <MapPin className="h-3.5 w-3.5" /> Điểm
             </button>
             <button
               onClick={() => setViewMode("both")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                viewMode === "both"
-                  ? "bg-white text-purple-700 shadow-sm"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === "both"
+                  ? "bg-white text-primary shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
-              }`}
+                }`}
             >
               <Eye className="h-3.5 w-3.5" /> Tất cả
             </button>
@@ -230,9 +227,8 @@ export default function IncidentHeatmap({ points }: IncidentHeatmapProps) {
                       </p>
                       <div className="flex items-center gap-1.5 mb-2">
                         <span
-                          className={`h-2 w-2 rounded-full ${
-                            PRIORITY_DOT[p.priority] || "bg-gray-400"
-                          }`}
+                          className={`h-2 w-2 rounded-full ${PRIORITY_DOT[p.priority] || "bg-gray-400"
+                            }`}
                         />
                         <span className="text-xs text-gray-600">
                           {PRIORITY_LABEL[p.priority] || p.priority}
