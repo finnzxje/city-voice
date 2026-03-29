@@ -1,7 +1,9 @@
-import { useState } from "react";
-import type { Category } from "../../../api/services";
-import { FolderTree, Search, Plus, Edit2, Trash2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AdminAPI, IncidentAPI, type Category } from "../../../api/services";
+import { FolderTree, Search, Plus, Edit2, AlertCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import toast from "react-hot-toast";
+import AddCategoryModal from "./AddCategoryModal";
 
 const COLOR_PALETTE = [
   { bg: "bg-surface-container-high", icon: "text-primary" },
@@ -13,11 +15,8 @@ const COLOR_PALETTE = [
 ];
 
 function getCategoryVisual(iconKey: string, index: number) {
-  // Try to find the icon dynamically, fallback to FolderTree
-  // Converting iconKey like "road-warning" to "RoadWarning" or finding match
   let IconComponent = (LucideIcons as any)[iconKey];
   if (!IconComponent) {
-    // Try pascal case conversion
     const pascalKey = iconKey
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -28,19 +27,68 @@ function getCategoryVisual(iconKey: string, index: number) {
   return { Icon: IconComponent, palette };
 }
 
-interface CategoriesTabProps {
-  categories: Category[];
-  loading: boolean;
-  onOpenModal: (cat?: Category) => void;
-  onDelete: (id: number) => void;
-}
-
-export default function CategoriesTab({ categories, loading, onOpenModal, onDelete }: CategoriesTabProps) {
+export default function CategoriesTab() {
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', slug: '', iconKey: '' });
   const activeCategories = categories.filter((c) => c.active !== false);
   const inactiveCategories = categories.filter((c) => c.active === false);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+  const fetchCategories = async () => {
+    setLoading(true);
+    try {
+      const res = await IncidentAPI.getCategories();
+      if (res.data?.data) setCategories(res.data.data);
+    } catch (err) {
+      toast.error("Không thể tải danh mục.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleOpenCategoryModal = (cat?: Category) => {
+    if (cat) {
+      setEditingCategory(cat);
+      setCategoryForm({ name: cat.name, slug: cat.slug, iconKey: cat.iconKey || '' });
+    } else {
+      setEditingCategory(null);
+      setCategoryForm({ name: '', slug: '', iconKey: 'FolderTree' });
+    }
+    setIsCategoryModalOpen(true);
+  };
+
+  const handleSaveCategory = async (isActive: boolean = true) => {
+    if (!categoryForm.name || !categoryForm.slug) {
+      toast.error("Vui lòng điền tên và slug");
+      return;
+    }
+    const toastId = toast.loading(isActive ? "Đang lưu..." : "Đang vô hiệu hóa...");
+    try {
+      const finalPayload = {
+        ...categoryForm,
+        active: isActive
+      };
+
+      if (editingCategory) {
+        await AdminAPI.updateCategory(editingCategory.id, finalPayload);
+      } else {
+        await AdminAPI.createCategory(finalPayload);
+      }
+
+      toast.success(isActive ? "Đã lưu danh mục thành công" : "Đã vô hiệu hóa danh mục", { id: toastId });
+      setIsCategoryModalOpen(false);
+      fetchCategories();
+
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Thao tác thất bại";
+      toast.error(errorMsg, { id: toastId });
+    }
+  };
   const displayCategories = categories.filter((c) =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -52,22 +100,22 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="max-w-2xl">
             <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">
-              Core Infrastructure
+              CƠ SỞ HẠ TẦNG CỐT LÕI
             </span>
             <h1 className="text-4xl md:text-5xl font-extrabold font-headline leading-tight mb-4">
-              Structure City Response
+              CẤU TRÚC PHẢN HỒI
             </h1>
             <p className="text-primary-fixed-dim text-lg max-w-xl">
-              Configure incident classification hierarchies to optimize response time and departmental routing.
+              Thiết lập hệ thống phân cấp phân loại sự cố để tối ưu hóa thời gian phản hồi và định tuyến theo bộ phận.
             </p>
           </div>
           <div className="flex gap-4">
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 min-w-[140px]">
-              <p className="text-xs text-[#b4c5ff] mb-1 font-bold">Total Active</p>
+              <p className="text-xs text-[#b4c5ff] mb-1 font-bold">Tổng hoạt động</p>
               <p className="text-3xl font-bold font-headline">{activeCategories.length}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 min-w-[140px]">
-              <p className="text-xs text-[#b4c5ff] mb-1 font-bold">Inactive</p>
+              <p className="text-xs text-[#b4c5ff] mb-1 font-bold">Không hoạt động</p>
               <p className="text-3xl font-bold font-headline">{inactiveCategories.length}</p>
             </div>
           </div>
@@ -83,16 +131,16 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
         <div className="lg:col-span-8 space-y-4">
           <div className="flex items-center justify-between mb-4 px-2">
             <h3 className="text-xl font-bold text-on-surface flex items-center gap-2 font-headline">
-              Active Categories
+              Danh mục hoạt động
               <span className="text-xs font-bold px-3 py-0.5 bg-surface-container text-on-surface-variant rounded-full">
-                All
+                Tất cả
               </span>
             </h3>
             <div className="flex gap-2">
               <div className="relative hidden sm:block">
                 <input
                   className="bg-surface-container-lowest border-none rounded-lg py-2 pl-9 pr-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none w-48 shadow-sm"
-                  placeholder="Find category..."
+                  placeholder="Tìm danh mục..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -107,7 +155,7 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : displayCategories.length === 0 ? (
-               <div className="text-center py-12 text-on-surface-variant">Không có danh mục nào</div>
+              <div className="text-center py-12 text-on-surface-variant">Không có danh mục nào</div>
             ) : (
               displayCategories.map((cat, idx) => {
                 const { Icon, palette } = getCategoryVisual(cat.iconKey, idx);
@@ -140,29 +188,20 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
                     <div className="flex items-center gap-6">
                       <div className="hidden sm:block text-right mr-4">
                         <p className="text-[10px] font-black uppercase tracking-tighter text-outline-variant mb-0.5">
-                          Status
+                          Trạng thái
                         </p>
                         <p className={`text-sm font-bold ${isActive ? "text-[#168a3e]" : "text-on-surface-variant"}`}>
-                          {isActive ? "Active" : "Disabled"}
+                          {isActive ? "Hoạt động" : "Không hoạt động"}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => onOpenModal(cat)}
+                          onClick={() => handleOpenCategoryModal(cat)}
                           className="p-2.5 rounded-xl bg-surface-container text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors"
                           title="Chỉnh sửa"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        {isActive && (
-                          <button
-                            onClick={() => onDelete(cat.id)}
-                            className="p-2.5 rounded-xl bg-surface-container text-on-surface-variant hover:text-error hover:bg-error-container/50 transition-colors"
-                            title="Xóa/Tắt"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -179,15 +218,15 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                 <FolderTree className="h-5 w-5" />
               </div>
-              <h3 className="text-xl font-bold text-on-surface font-headline">New Category</h3>
+              <h3 className="text-xl font-bold text-on-surface font-headline">Tạo danh mục mới</h3>
             </div>
-            
+
             <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-              Create a new incident category to expand the reporting capabilities for citizens. Choose a clear name and an identifiable icon.
+              Tạo danh mục sự cố mới để mở rộng khả năng báo cáo cho người dân. Chọn tên rõ ràng và một biểu tượng dễ nhận biết.
             </p>
 
             <button
-              onClick={() => onOpenModal()}
+              onClick={() => handleOpenCategoryModal()}
               className="w-full bg-primary text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary-container transition-all active:scale-95 shadow-lg shadow-primary/20"
             >
               <Plus className="h-5 w-5" />
@@ -201,13 +240,21 @@ export default function CategoriesTab({ categories, loading, onOpenModal, onDele
               <div>
                 <h4 className="text-sm font-bold text-on-secondary-container mb-1">Audit Log</h4>
                 <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-                  Changes to category metadata are logged with a timestamp for compliance tracking.
+                  Thay đổi siêu dữ liệu danh mục được ghi lại với dấu thời gian để theo dõi tuân thủ.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
+      <AddCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        form={categoryForm}
+        setForm={setCategoryForm}
+        onSave={handleSaveCategory}
+        isEditing={!!editingCategory}
+      />
     </div>
   );
 }

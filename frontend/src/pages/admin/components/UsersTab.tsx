@@ -1,23 +1,54 @@
-import { useState } from "react";
-import type { UserInfo } from "../../../api/services";
+import { useEffect, useState } from "react";
+import { AdminAPI, type UserInfo } from "../../../api/services";
 import { Users, TrendingUp, Bolt, Search, Filter, ChevronDown, Check } from "lucide-react";
+import toast from "react-hot-toast";
 
-interface UsersTabProps {
-  users: UserInfo[];
-  systemRoles: string[];
-  loading: boolean;
-  onRoleChange: (userId: string, newRole: string) => void;
-}
 
-export default function UsersTab({ users, systemRoles, loading, onRoleChange }: UsersTabProps) {
+
+export default function UsersTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [usersList, setUsersList] = useState<UserInfo[]>([]);
+  const [systemRoles, setSystemRoles] = useState<string[]>(['citizen', 'staff', 'manager', 'admin']);
+  const [loading, setLoading] = useState(false);
 
-  const totalCitizens = users.filter((u) => u.role === "citizen").length;
-  const activeSessions = users.filter((u) => u.isActive).length;
-
-  const filteredUsers = users.filter((u) => {
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, []);
+  const fetchRoles = async () => {
+    try {
+      const res = await AdminAPI.getRoles();
+      if (res.data?.data) setSystemRoles(res.data.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await AdminAPI.getUsers();
+      if (res.data?.data) setUsersList(res.data.data);
+    } catch (err: any) {
+      toast.error("Không thể tải danh sách người dùng.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const toastId = toast.loading("Đang cập nhật quyền...");
+    try {
+      await AdminAPI.updateUserRole(userId, newRole);
+      toast.success("Cập nhật thành công", { id: toastId });
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Cập nhật thất bại", { id: toastId });
+    }
+  };
+  const totalCitizens = usersList.filter((u) => u.role === "citizen").length;
+  const activeSessions = usersList.filter((u) => u.isActive).length;
+  const filteredUsers = usersList.filter((u) => {
     const matchesSearch =
       u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -32,26 +63,19 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
         <div className="md:col-span-2 p-8 bg-linear-to-br from-primary to-primary-container rounded-xl shadow-lg text-white flex flex-col justify-between relative overflow-hidden group">
           <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-white/10 rounded-full blur-[48px] group-hover:scale-110 transition-transform duration-700"></div>
           <div className="relative z-10">
-            <h3 className="text-3xl font-bold mb-2 font-headline">Manage Access</h3>
+            <h3 className="text-3xl font-bold mb-2 font-headline">Quản lý quyền truy cập</h3>
             <p className="text-white/80 max-w-md text-sm leading-relaxed">
-              Securely oversee citizen and staff permissions. Update roles, manage lifecycle status, and monitor administrative activity across the CityVoice ecosystem.
+              Quản lý an toàn quyền truy cập của công dân và nhân viên. Cập nhật vai trò, quản lý trạng thái vòng đời và giám sát hoạt động quản trị trên toàn hệ sinh thái CityVoice.
             </p>
           </div>
-          <div className="mt-8 flex gap-4 relative z-10">
-            <button className="bg-white text-primary px-6 py-2.5 rounded-lg text-sm font-bold shadow-sm hover:bg-surface-container-low transition-colors active:scale-95">
-              Add New User
-            </button>
-            <button className="bg-primary-container/50 border border-white/20 text-white px-6 py-2.5 rounded-lg text-sm font-bold hover:bg-white/10 transition-colors active:scale-95">
-              Export Report
-            </button>
-          </div>
+
         </div>
 
         <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-primary/10 transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] font-black uppercase text-on-surface-variant tracking-tighter">
-                Total Citizens
+                Tổng công dân
               </span>
               <span className="text-primary bg-primary/5 p-1.5 rounded-lg">
                 <Users className="h-4 w-4" />
@@ -60,7 +84,7 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
             <p className="text-4xl font-black text-on-surface font-headline">{totalCitizens}</p>
           </div>
           <p className="text-[11px] text-[#168a3e] font-bold mt-4 flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" />+{users.length > 0 ? '4' : '0'}% from last month
+            <TrendingUp className="h-3 w-3" />+{usersList.length > 0 ? '4' : '0'}% từ tháng trước
           </p>
         </div>
 
@@ -68,7 +92,7 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] font-black uppercase text-on-surface-variant tracking-tighter">
-                Active Users
+                Người dùng hoạt động
               </span>
               <span className="text-secondary bg-secondary/5 p-1.5 rounded-lg">
                 <Bolt className="h-4 w-4" />
@@ -77,7 +101,7 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
             <p className="text-4xl font-black text-on-surface font-headline">{activeSessions}</p>
           </div>
           <div className="mt-4 flex -space-x-2">
-            {users.slice(0, 3).map((u, i) => (
+            {usersList.slice(0, 3).map((u, i) => (
               <div
                 key={i}
                 className="w-6 h-6 rounded-full border-2 border-white bg-primary text-[8px] flex items-center justify-center text-white font-bold uppercase"
@@ -100,7 +124,7 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
           <div className="relative w-full md:w-80">
             <input
               className="w-full bg-surface-container-lowest border-none rounded-lg py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
-              placeholder="Search by name or email..."
+              placeholder="Tìm kiếm theo tên hoặc email..."
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -113,7 +137,7 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
               onChange={(e) => setRoleFilter(e.target.value)}
               className="appearance-none bg-surface-container-lowest px-4 py-2.5 pl-10 pr-8 rounded-lg text-sm font-medium border-none shadow-sm text-on-surface hover:bg-white transition-all outline-none"
             >
-              <option value="all">Filter by Role (All)</option>
+              <option value="all">Lọc theo vai trò (Tất cả)</option>
               {systemRoles.map((r) => (
                 <option key={r} value={r}>
                   {r.toUpperCase()}
@@ -147,20 +171,19 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
               {filteredUsers.map((u) => {
                 const isSysAdmin = u.role === "admin";
                 return (
-                  <tr key={u.id} className="group hover:bg-surface-container-low/50 transition-colors">
+                  <tr key={u.id} className=" group hover:bg-surface-container-low/50 transition-colors">
                     <td className="px-8 py-4">
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs uppercase
-                          ${
-                            u.role === "admin"
+                          ${u.role === "admin"
                               ? "bg-error-container text-on-error-container"
                               : u.role === "manager"
-                              ? "bg-secondary-container/50 text-on-secondary-container"
-                              : u.role === "staff"
-                              ? "bg-primary/10 text-primary"
-                              : "bg-surface-container-highest text-on-surface-variant"
-                          }
+                                ? "bg-secondary-container/50 text-on-secondary-container"
+                                : u.role === "staff"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-surface-container-highest text-on-surface-variant"
+                            }
                         `}
                         >
                           {u.fullName?.substring(0, 2) || u.email.substring(0, 2)}
@@ -174,15 +197,14 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
-                        ${
-                          u.role === "admin"
+                        ${u.role === "admin"
                             ? "bg-error-container text-on-error-container"
                             : u.role === "manager"
-                            ? "bg-secondary-container/30 text-secondary"
-                            : u.role === "staff"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-surface-container-high text-on-surface-variant"
-                        }
+                              ? "bg-secondary-container/30 text-secondary"
+                              : u.role === "staff"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-surface-container-high text-on-surface-variant"
+                          }
                       `}
                       >
                         {u.role}
@@ -191,23 +213,21 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
                     <td className="px-6 py-4 text-center">
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
-                        ${
-                          u.isActive
+                        ${u.isActive
                             ? "bg-[#defce9] text-[#168a3e]"
                             : "bg-surface-container-highest text-on-surface-variant"
-                        }
+                          }
                       `}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                            u.isActive ? "bg-[#168a3e]" : "bg-on-surface-variant"
-                          }`}
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${u.isActive ? "bg-[#168a3e]" : "bg-on-surface-variant"
+                            }`}
                         ></span>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td className="px-8 py-4 text-right">
-                      <div className="relative inline-block text-left">
+                      <div className=" inline-block text-left">
                         <button
                           onClick={() => setOpenDropdownId(openDropdownId === u.id ? null : u.id)}
                           className="text-primary hover:bg-primary/5 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ml-auto outline-none"
@@ -217,20 +237,19 @@ export default function UsersTab({ users, systemRoles, loading, onRoleChange }: 
                         </button>
                         {/* Dropdown Menu */}
                         {openDropdownId === u.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest border border-surface-container rounded-xl shadow-xl z-10 p-2 animate-fade-in-down">
+                          <div className="absolute right-44 mt-2 w-48 bg-surface-container-lowest border border-surface-container rounded-xl shadow-xl z-50 p-2 animate-fade-in-down">
                             {systemRoles.map((role) => (
                               <button
                                 key={role}
                                 onClick={() => {
-                                  onRoleChange(u.id, role);
+                                  handleRoleChange(u.id, role);
                                   setOpenDropdownId(null);
                                 }}
                                 disabled={isSysAdmin} // Admin roles are often protected
                                 className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg flex justify-between items-center transition-colors
-                                  ${
-                                    u.role === role
-                                      ? "bg-primary/10 text-primary"
-                                      : "text-on-surface hover:bg-surface-container-low"
+                                  ${u.role === role
+                                    ? "bg-primary/10 text-primary"
+                                    : "text-on-surface hover:bg-surface-container-low"
                                   }
                                   ${isSysAdmin ? "opacity-50 cursor-not-allowed" : ""}
                                 `}

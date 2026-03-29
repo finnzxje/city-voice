@@ -22,7 +22,8 @@ import StaffReportDetails from "./pages/staff/ReportDetails";
 import ManagerDashboard from "./pages/manager/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Home from "./pages/Home";
-import DashboardCitizen from "./pages/citizen/DashboardCitizen";
+import UsersTab from "./pages/admin/components/UsersTab";
+import CategoriesTab from "./pages/admin/components/CategoriesTab";
 
 const ProtectedRoute = ({
   children,
@@ -68,21 +69,62 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
-      <Route path="/dashboard-citizen" element={<DashboardCitizen />} />
-      {/* Public Landing or Protected Dashboard */}
+      <Route path="/dashboard-citizen" element={<CitizenDashboard />} />
+      {/* Public Landing or Protected Dashboard Redirect */}
       <Route
         path="/"
         element={
           isAuthenticated ? (
-            user?.role === "citizen" ? <CitizenDashboard /> :
-              user?.role === "manager" ? <ManagerDashboard /> :
-                user?.role === "admin" ? <AdminDashboard /> :
-                  <StaffDashboard />
+            user?.role === "citizen" ? <Navigate to="/citizen" replace /> :
+              user?.role === "manager" ? <Navigate to="/manager" replace /> :
+                user?.role === "admin" ? <Navigate to="/admin/users" replace /> :
+                  <Navigate to="/staff" replace />
           ) : (
             <Home />
           )
         }
       />
+
+      {/* Role-based base routes */}
+      <Route
+        path="/citizen"
+        element={
+          <ProtectedRoute allowedRoles={["citizen"]}>
+            <CitizenDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager"
+        element={
+          <ProtectedRoute allowedRoles={["manager"]}>
+            <ManagerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff"
+        element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+            <StaffDashboard />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/staff" replace />} />
+      </Route>
+      {/* Admin nested routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/users" replace />} />
+        <Route path="users" element={<UsersTab />} />
+        <Route path="categories" element={<CategoriesTab />} />
+      </Route>
 
       <Route
         path="/reports/new"

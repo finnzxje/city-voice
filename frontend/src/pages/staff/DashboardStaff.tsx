@@ -14,7 +14,7 @@ import {
 import StatCards from "./components/dashboard/StatCards";
 import IncidentTable from "./components/dashboard/IncidentTable";
 import QuickTips from "./components/dashboard/QuickTips";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
@@ -66,10 +66,15 @@ export default function StaffDashboard() {
           </div>
         </div>
         <nav className="flex-1 space-y-1 py-5">
-          <Link to="/" className="flex items-center px-4 py-3 text-on-surface hover:text-primary hover:bg-primary/10 transition-all duration-200 cursor-pointer text-sm font-medium rounded-lg">
+          <NavLink to="/staff" className={({ isActive }) =>
+            `w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer hover:translate-y-0 active:scale-100 ${isActive
+              ? "bg-surface-container-lowest text-primary shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
+            }`
+          }>
             <LayoutDashboard className="mr-3 h-5 w-5" />
             Dashboard
-          </Link>
+          </NavLink>
 
         </nav>
         <div className="pt-4 mt-auto border-t border-surface-container">
