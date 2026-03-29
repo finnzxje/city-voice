@@ -10,6 +10,48 @@ class ReportService {
 
   ReportService({required Dio dio}) : _dio = dio;
 
+  Report _parseReportObject(dynamic data) {
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      final apiResponse = ApiResponse<Report>.fromJson(
+        data,
+        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
+      );
+      final report = apiResponse.data;
+      if (report != null) return report;
+    }
+
+    if (data is Map<String, dynamic>) {
+      return Report.fromJson(data);
+    }
+
+    throw Exception('Unexpected response format');
+  }
+
+  List<Report> _parseReportList(dynamic data) {
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      final apiResponse = ApiResponse<List<Report>>.fromJson(
+        data,
+        fromJsonT: (json) {
+          if (json is List) {
+            return json
+                .map((item) => Report.fromJson(item as Map<String, dynamic>))
+                .toList();
+          }
+          return <Report>[];
+        },
+      );
+      return apiResponse.data ?? [];
+    }
+
+    if (data is List) {
+      return data
+          .map((item) => Report.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    return [];
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Submit a new report
   // ═══════════════════════════════════════════════════════════════════════════
@@ -41,11 +83,7 @@ class ReportService {
       data: formData,
     );
 
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      return Report.fromJson(data);
-    }
-    throw Exception('Unexpected response format');
+    return _parseReportObject(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -55,15 +93,7 @@ class ReportService {
   /// Fetches all reports submitted by the current citizen.
   Future<List<Report>> getMyReports() async {
     final response = await _dio.get(ApiConstants.myReports);
-
-    final data = response.data;
-    if (data is List) {
-      return data.map((item) {
-        // Mỗi item trong List là một Map chứa id, name, slug, iconKey
-        return Report.fromJson(item as Map<String, dynamic>);
-      }).toList();
-    }
-    return [];
+    return _parseReportList(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -73,12 +103,7 @@ class ReportService {
   /// Fetches a single report by its UUID.
   Future<Report> getReportById(String id) async {
     final response = await _dio.get(ApiConstants.reportById(id));
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      return Report.fromJson(data);
-    }
-    throw Exception('Unexpected response format');
+    return _parseReportObject(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

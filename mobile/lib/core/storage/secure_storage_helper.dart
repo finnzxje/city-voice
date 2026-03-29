@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Secure wrapper for persisting JWT tokens (access + refresh).
@@ -8,7 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 ///
 /// This class is a singleton consumed by [TokenInterceptor] and
 /// [AuthViewModel].
-class SecureStorageHelper {
+class SecureStorageHelper extends ChangeNotifier {
   // Keys —————————————————————————————————————————————————————————
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
@@ -24,18 +25,28 @@ class SecureStorageHelper {
   // ── Access Token ─────────────────────────────────────────────────────────
   Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
 
-  Future<void> saveAccessToken(String token) =>
-      _storage.write(key: _accessTokenKey, value: token);
+  Future<void> saveAccessToken(String token) async {
+    await _storage.write(key: _accessTokenKey, value: token);
+    notifyListeners();
+  }
 
-  Future<void> deleteAccessToken() => _storage.delete(key: _accessTokenKey);
+  Future<void> deleteAccessToken() async {
+    await _storage.delete(key: _accessTokenKey);
+    notifyListeners();
+  }
 
   // ── Refresh Token ────────────────────────────────────────────────────────
   Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
 
-  Future<void> saveRefreshToken(String token) =>
-      _storage.write(key: _refreshTokenKey, value: token);
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: _refreshTokenKey, value: token);
+    notifyListeners();
+  }
 
-  Future<void> deleteRefreshToken() => _storage.delete(key: _refreshTokenKey);
+  Future<void> deleteRefreshToken() async {
+    await _storage.delete(key: _refreshTokenKey);
+    notifyListeners();
+  }
 
   // ── Convenience ──────────────────────────────────────────────────────────
 
@@ -45,9 +56,10 @@ class SecureStorageHelper {
     required String refreshToken,
   }) async {
     await Future.wait([
-      saveAccessToken(accessToken),
-      saveRefreshToken(refreshToken),
+      _storage.write(key: _accessTokenKey, value: accessToken),
+      _storage.write(key: _refreshTokenKey, value: refreshToken),
     ]);
+    notifyListeners();
   }
 
   /// Returns `true` if an access token is present (quick auth check).
@@ -59,8 +71,9 @@ class SecureStorageHelper {
   /// Wipes all stored tokens — used on logout or session expiry.
   Future<void> clearAll() async {
     await Future.wait([
-      deleteAccessToken(),
-      deleteRefreshToken(),
+      _storage.delete(key: _accessTokenKey),
+      _storage.delete(key: _refreshTokenKey),
     ]);
+    notifyListeners();
   }
 }

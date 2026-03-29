@@ -39,13 +39,20 @@ Future<void> main() async {
   // ── Core dependencies ──────────────────────────────────────────────────
   final storage = SecureStorageHelper();
   final dio = DioClient.create(storage: storage);
-  final appRouter = AppRouter(storage: storage);
 
   // ── Feature services ───────────────────────────────────────────────────
   final authService = AuthService(dio: dio);
   final reportService = ReportService(dio: dio);
   final categoryService = CategoryService(dio: dio);
   final notificationService = NotificationService(dio: dio);
+  final authViewModel = AuthViewModel(
+    authService: authService,
+    storage: storage,
+  )..tryAutoLogin();
+  final appRouter = AppRouter(
+    storage: storage,
+    authViewModel: authViewModel,
+  );
 
   runApp(
     MultiProvider(
@@ -57,12 +64,7 @@ Future<void> main() async {
 
         // Auth
         Provider<AuthService>.value(value: authService),
-        ChangeNotifierProvider<AuthViewModel>(
-          create: (_) => AuthViewModel(
-            authService: authService,
-            storage: storage,
-          )..tryAutoLogin(),
-        ),
+        ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
 
         // Reports
         Provider<ReportService>.value(value: reportService),

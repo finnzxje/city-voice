@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import '../storage/secure_storage_helper.dart';
 import '../../features/auth/viewmodels/auth_view_model.dart';
 import '../../features/auth/views/login_screen.dart';
@@ -20,14 +19,26 @@ import '../../features/reports/views/report_detail_screen.dart';
 ///   - staff/manager/admin → `/staff-dashboard`
 class AppRouter {
   final SecureStorageHelper _storage;
+  final AuthViewModel _authViewModel;
 
-  AppRouter({required SecureStorageHelper storage}) : _storage = storage;
+  AppRouter({
+    required SecureStorageHelper storage,
+    required AuthViewModel authViewModel,
+  })  : _storage = storage,
+        _authViewModel = authViewModel;
 
   late final GoRouter router = GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/splash',
     debugLogDiagnostics: true,
+    refreshListenable: Listenable.merge([_authViewModel, _storage]),
     redirect: _globalRedirect,
     routes: [
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const _AppSplashScreen(),
+      ),
+
       // ── Auth Routes ──────────────────────────────────────────────────
       GoRoute(
         path: '/login',
@@ -84,12 +95,20 @@ class AppRouter {
     BuildContext context,
     GoRouterState state,
   ) async {
-    // Capture role-based homepage BEFORE the async gap.
-    final homepage = _homepageForRole(context);
+    final authVm = _authViewModel;
     final hasToken = await _storage.hasTokens();
     final currentPath = state.matchedLocation;
+    final homepage = _homepageForRole(authVm);
 
-    const publicPaths = {'/login', '/register', '/verify-email'};
+    if (authVm.isRestoringSession) {
+      return currentPath == '/splash' ? null : '/splash';
+    }
+
+    if (currentPath == '/splash') {
+      return hasToken ? homepage : '/login';
+    }
+
+    const publicPaths = {'/login', '/register', '/verify-email', '/splash'};
     final isOnPublicPage = publicPaths.contains(currentPath);
 
     // Not authenticated → go to login
@@ -102,18 +121,41 @@ class AppRouter {
       return homepage;
     }
 
+    final role = authVm.user?.role;
+    final isInternal = role == 'staff' || role == 'manager' || role == 'admin';
+    final isCitizenOnlyRoute =
+        currentPath == '/dashboard' || currentPath == '/reports/new';
+
+    if (isInternal && isCitizenOnlyRoute) {
+      return '/staff-dashboard';
+    }
+
+    if (!isInternal && currentPath == '/staff-dashboard') {
+      return '/dashboard';
+    }
+
     return null;
   }
 
   /// Returns the correct homepage path based on the user's role.
-  String _homepageForRole(BuildContext context) {
-    try {
-      final authVm = context.read<AuthViewModel>();
-      final role = authVm.user?.role;
-      if (role == 'staff' || role == 'manager' || role == 'admin') {
-        return '/staff-dashboard';
-      }
-    } catch (_) {}
+  String _homepageForRole(AuthViewModel authVm) {
+    final role = authVm.user?.role;
+    if (role == 'staff' || role == 'manager' || role == 'admin') {
+      return '/staff-dashboard';
+    }
     return '/dashboard';
+  }
+}
+
+class _AppSplashScreen extends StatelessWidget {
+  const _AppSplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
   }
 }
