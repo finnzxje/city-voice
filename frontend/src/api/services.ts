@@ -21,8 +21,11 @@ export interface ReportResponse {
   priority?: "low" | "medium" | "high" | "critical";
   citizenId?: string;
   citizenName?: string;
+  citizenPhone?: string;
   assignedToId?: string;
   assignedToName?: string;
+  proofImageUrl?: string;
+  updatedAt?: string;
 }
 
 export interface UserInfo {

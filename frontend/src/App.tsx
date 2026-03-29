@@ -15,7 +15,7 @@ import CitizenReportDetails from "./pages/citizen/ReportDetails";
 import SubmitReport from "./pages/citizen/SubmitReport";
 
 // Staff Pages
-import StaffDashboard from "./pages/staff/Dashboard";
+import StaffDashboard from "./pages/staff/DashboardStaff";
 import StaffReportDetails from "./pages/staff/ReportDetails";
 
 // Manager & Admin Pages
