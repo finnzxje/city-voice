@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   slug: string;
   iconKey: string;
+  active?: boolean;
 }
 
 export interface ReportResponse {
