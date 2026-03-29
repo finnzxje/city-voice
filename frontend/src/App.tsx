@@ -7,7 +7,7 @@ import { Toaster } from "react-hot-toast";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import VerifyEmail from "./pages/auth/VerifyEmail";
-import Landing from "./pages/Landing";
+
 
 // Citizen Pages
 import CitizenDashboard from "./pages/citizen/DashboardCitizen";
