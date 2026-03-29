@@ -9,6 +9,7 @@ import '../../features/reports/views/dashboard_screen.dart';
 import '../../features/reports/views/staff_dashboard_screen.dart';
 import '../../features/reports/views/submit_report_screen.dart';
 import '../../features/reports/views/report_detail_screen.dart';
+import '../../features/review/views/staff_report_detail_screen.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
@@ -85,6 +86,14 @@ class AppRouter {
         name: 'staff-dashboard',
         builder: (context, state) => const StaffDashboardScreen(),
       ),
+      GoRoute(
+        path: '/staff-reports/:id',
+        name: 'staff-report-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return StaffReportDetailScreen(reportId: id);
+        },
+      ),
     ],
   );
 
@@ -125,12 +134,14 @@ class AppRouter {
     final isInternal = role == 'staff' || role == 'manager' || role == 'admin';
     final isCitizenOnlyRoute =
         currentPath == '/dashboard' || currentPath == '/reports/new';
+    final isStaffOnlyRoute = currentPath == '/staff-dashboard' ||
+        currentPath.startsWith('/staff-reports');
 
     if (isInternal && isCitizenOnlyRoute) {
       return '/staff-dashboard';
     }
 
-    if (!isInternal && currentPath == '/staff-dashboard') {
+    if (!isInternal && isStaffOnlyRoute) {
       return '/dashboard';
     }
 

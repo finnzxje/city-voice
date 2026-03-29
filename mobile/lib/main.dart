@@ -13,6 +13,8 @@ import 'features/reports/services/category_service.dart';
 import 'features/reports/services/notification_service.dart';
 import 'features/reports/services/report_service.dart';
 import 'features/reports/viewmodels/report_view_model.dart';
+import 'features/review/services/staff_report_service.dart';
+import 'features/review/viewmodels/staff_workflow_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,8 +35,8 @@ Future<void> main() async {
     ),
   );
 
-  // ── Request location permission early ──────────────────────────────────
-  await _requestLocationPermission();
+  // Location permission is requested asynchronously after runApp
+  // so the UI renders immediately without blocking.
 
   // ── Core dependencies ──────────────────────────────────────────────────
   final storage = SecureStorageHelper();
@@ -45,6 +47,7 @@ Future<void> main() async {
   final reportService = ReportService(dio: dio);
   final categoryService = CategoryService(dio: dio);
   final notificationService = NotificationService(dio: dio);
+  final staffReportService = StaffReportService(dio: dio);
   final authViewModel = AuthViewModel(
     authService: authService,
     storage: storage,
@@ -58,7 +61,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         // Core
-        Provider<SecureStorageHelper>.value(value: storage),
+        ChangeNotifierProvider<SecureStorageHelper>.value(value: storage),
         Provider<Dio>.value(value: dio),
         Provider<AppRouter>.value(value: appRouter),
 
@@ -77,10 +80,21 @@ Future<void> main() async {
             notificationService: notificationService,
           ),
         ),
+
+        // Staff Review Workflow
+        Provider<StaffReportService>.value(value: staffReportService),
+        ChangeNotifierProvider<StaffWorkflowViewModel>(
+          create: (_) => StaffWorkflowViewModel(
+            service: staffReportService,
+          ),
+        ),
       ],
       child: const CityVoiceApp(),
     ),
   );
+
+  // Request location permission AFTER the UI is rendered.
+  _requestLocationPermission();
 }
 
 /// Requests location permission before the app launches.
