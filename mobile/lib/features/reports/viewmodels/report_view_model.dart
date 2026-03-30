@@ -3,61 +3,42 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_exception.dart';
 import '../models/incident_category.dart';
-import '../models/notification_model.dart';
 import '../models/report.dart';
 import '../services/category_service.dart';
-import '../services/notification_service.dart';
 import '../services/report_service.dart';
 
-/// Manages reports, categories, and notifications state for citizen screens.
+/// Manages reports and categories state for citizen screens.
+
 class ReportViewModel extends ChangeNotifier {
   final ReportService _reportService;
   final CategoryService _categoryService;
-  final NotificationService _notificationService;
 
   ReportViewModel({
     required ReportService reportService,
     required CategoryService categoryService,
-    required NotificationService notificationService,
   })  : _reportService = reportService,
-        _categoryService = categoryService,
-        _notificationService = notificationService;
+        _categoryService = categoryService;
 
   // ── Observable state ───────────────────────────────────────────────────────
   List<Report> _reports = [];
-
   List<Report> get reports => _reports;
 
   List<IncidentCategory> _categories = [];
-
   List<IncidentCategory> get categories => _categories;
 
-  List<NotificationModel> _notifications = [];
-
-  List<NotificationModel> get notifications => _notifications;
-
-  int _unreadCount = 0;
-
-  int get unreadCount => _unreadCount;
-
   Report? _selectedReport;
-
   Report? get selectedReport => _selectedReport;
 
   bool _isLoading = false;
-
   bool get isLoading => _isLoading;
 
   bool _isSubmitting = false;
-
   bool get isSubmitting => _isSubmitting;
 
   String? _errorMessage;
-
   String? get errorMessage => _errorMessage;
 
   String? _successMessage;
-
   String? get successMessage => _successMessage;
 
   // ── Private helpers ────────────────────────────────────────────────────────
@@ -96,7 +77,7 @@ class ReportViewModel extends ChangeNotifier {
   // ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Load all dashboard data: reports, categories, notification count.
+  /// Load all dashboard data: reports and categories.
   Future<void> loadDashboard() async {
     _setLoading(true);
     _setError(null);
@@ -104,11 +85,9 @@ class ReportViewModel extends ChangeNotifier {
       final results = await Future.wait([
         _reportService.getMyReports(),
         _categoryService.getCategories(),
-        // _notificationService.getUnreadCount(),
       ]);
       _reports = results[0] as List<Report>;
       _categories = results[1] as List<IncidentCategory>;
-      // _unreadCount = results[2] as int;
     } catch (e) {
       _setError(_extractError(e));
     } finally {
@@ -214,37 +193,5 @@ class ReportViewModel extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
-  }
-
-  // ── Notifications ──────────────────────────────────────────────────────────
-
-  /// Fetch all notifications (for notification list/panel).
-  // Future<void> loadNotifications() async {
-  //   try {
-  //     _notifications = await _notificationService.getNotifications();
-  //     _unreadCount = _notifications.where((n) => !n.isRead).length;
-  //     notifyListeners();
-  //   } catch (_) {}
-  // }
-
-  /// Mark a notification as read.
-  Future<void> markNotificationRead(String id) async {
-    try {
-      await _notificationService.markAsRead(id);
-      final idx = _notifications.indexWhere((n) => n.id == id);
-      if (idx != -1) {
-        // Create a new instance since the model is immutable
-        _unreadCount = (_unreadCount - 1).clamp(0, _notifications.length);
-        notifyListeners();
-      }
-    } catch (_) {}
-  }
-
-  /// Refresh the unread badge count.
-  Future<void> refreshUnreadCount() async {
-    try {
-      _unreadCount = await _notificationService.getUnreadCount();
-      notifyListeners();
-    } catch (_) {}
   }
 }

@@ -10,6 +10,7 @@ import '../../features/reports/views/staff_dashboard_screen.dart';
 import '../../features/reports/views/submit_report_screen.dart';
 import '../../features/reports/views/report_detail_screen.dart';
 import '../../features/review/views/staff_report_detail_screen.dart';
+import '../../features/notifications/views/notifications_screen.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
@@ -22,6 +23,9 @@ class AppRouter {
   final SecureStorageHelper _storage;
   final AuthViewModel _authViewModel;
 
+  /// Global navigator key for overlay access (in-app push notifications).
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   AppRouter({
     required SecureStorageHelper storage,
     required AuthViewModel authViewModel,
@@ -29,6 +33,7 @@ class AppRouter {
         _authViewModel = authViewModel;
 
   late final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/splash',
     debugLogDiagnostics: true,
     refreshListenable: Listenable.merge([_authViewModel, _storage]),
@@ -78,6 +83,11 @@ class AppRouter {
           final id = state.pathParameters['id']!;
           return ReportDetailScreen(reportId: id);
         },
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
 
       // ── Staff / Manager / Admin routes ─────────────────────────────

@@ -34,7 +34,7 @@ packages:
     source: hosted
     version: "2.13.0"
   badges:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: badges
       sha256: a7b6bbd60dce418df0db3058b53f9d083c22cdb5132a052145dc267494df0b84
@@ -1046,7 +1046,7 @@ packages:
     source: hosted
     version: "1.12.1"
   stomp_dart_client:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: stomp_dart_client
       sha256: "9ca00600a212f1e08fda614cf6815437829b1d08d8911ff5c798f130a2fa2d59"
@@ -1102,7 +1102,7 @@ packages:
     source: hosted
     version: "0.7.7"
   timeago:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: timeago
       sha256: b05159406a97e1cbb2b9ee4faa9fb096fe0e2dfcd8b08fcd2a00553450d3422e

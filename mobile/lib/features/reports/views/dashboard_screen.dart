@@ -1,10 +1,10 @@
-import 'package:city_voice/core/constants/api_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/utils.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
+import '../../notifications/viewmodels/notification_view_model.dart';
 import '../models/report.dart';
 import '../viewmodels/report_view_model.dart';
 
@@ -26,6 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportViewModel>().loadDashboard();
+      context.read<NotificationViewModel>().init();
     });
   }
 
@@ -147,7 +148,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             return RefreshIndicator(
-              onRefresh: vm.refreshReports,
+              onRefresh: () async {
+                final notifVm = context.read<NotificationViewModel>();
+                await vm.refreshReports();
+                await notifVm.refresh(showLoading: false);
+              },
               color: AppColors.primary,
               child: CustomScrollView(
                 slivers: [
@@ -380,48 +385,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Notification bell with badge
-          Stack(
-            children: [
-              IconButton(
-                onPressed: () {
-                  // TODO: open notification panel
-                },
-                icon: const Icon(Icons.notifications_outlined),
-                iconSize: 28,
-                color: AppColors.textPrimary,
-              ),
-              if (vm.unreadCount > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: AppColors.error,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
-                    ),
-                    child: Text(
-                      vm.unreadCount > 9 ? '9+' : '${vm.unreadCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+          // Notification bell with badge (from NotificationViewModel)
+          Consumer<NotificationViewModel>(
+            builder: (ctx, notifVm, _) => Stack(
+              children: [
+                IconButton(
+                  onPressed: () => context.push('/notifications'),
+                  icon: const Icon(Icons.notifications_outlined),
+                  iconSize: 28,
+                  color: AppColors.textPrimary,
+                ),
+                if (notifVm.unreadCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        notifVm.unreadCount > 9
+                            ? '9+'
+                            : '${notifVm.unreadCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
 
           IconButton(
             onPressed: () async {
               final authVm = context.read<AuthViewModel>();
+              context.read<NotificationViewModel>().stopPolling();
               final router = GoRouter.of(context);
               await authVm.logout();
               router.go('/login');
