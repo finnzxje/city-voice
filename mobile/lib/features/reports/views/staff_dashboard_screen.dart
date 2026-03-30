@@ -8,8 +8,9 @@ import '../../review/viewmodels/staff_workflow_view_model.dart';
 
 /// Dashboard for staff / manager / admin roles.
 ///
-/// Shows all submitted reports with status filter tabs, stats cards,
-/// and tappable report cards that navigate to the staff report detail screen.
+/// Shows all submitted reports with server-side filtering (status, priority,
+/// category) and pagination. Tapping a report navigates to the staff detail
+/// screen.
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
 
@@ -18,13 +19,13 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
-  String _statusFilter = 'all';
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<StaffWorkflowViewModel>().loadReports();
+      final vm = context.read<StaffWorkflowViewModel>();
+      vm.loadCategories();
+      vm.loadReports();
     });
   }
 
@@ -38,48 +39,41 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       body: SafeArea(
         child: Consumer<StaffWorkflowViewModel>(
           builder: (context, vm, _) {
-            final filtered = _filteredReports(vm.reports);
-
             return RefreshIndicator(
-              onRefresh: () => vm.loadReports(),
+              onRefresh: () => vm.loadReports(page: vm.currentPage),
               color: AppColors.primary,
               child: CustomScrollView(
                 slivers: [
-                  // ── Header ────────────────────────────────────────────
+                  // ── Header ────────────────────────────────────
                   SliverToBoxAdapter(
                       child: _buildHeader(theme, authVm, roleName)),
 
-                  // ── Stats ─────────────────────────────────────────────
-                  SliverToBoxAdapter(child: _buildStatsRow(theme, vm)),
+                  // ── Filter Section ────────────────────────────
+                  SliverToBoxAdapter(child: _buildFilterSection(theme, vm)),
 
-                  // ── Filter Chips ──────────────────────────────────────
-                  SliverToBoxAdapter(child: _buildFilterChips(theme)),
-
-                  // ── Section Title ─────────────────────────────────────
+                  // ── Section Title ─────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Tất cả báo cáo',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            'Danh sách báo cáo',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            '${filtered.length} kết quả',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            'Trang ${vm.currentPage + 1}/${vm.totalPages}',
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
                     ),
                   ),
 
-                  // ── Report List / States ──────────────────────────────
+                  // ── Report List ───────────────────────────────
                   if (vm.isLoading && vm.reports.isEmpty)
                     const SliverFillRemaining(
                       child: Center(
@@ -89,18 +83,22 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     )
                   else if (vm.errorMessage != null && vm.reports.isEmpty)
                     SliverFillRemaining(child: _buildErrorState(theme, vm))
-                  else if (filtered.isEmpty)
-                    SliverFillRemaining(child: _buildEmptyState(theme))
+                  else if (vm.reports.isEmpty)
+                    SliverFillRemaining(child: _buildEmptyState(theme, vm))
                   else
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       sliver: SliverList.separated(
-                        itemCount: filtered.length,
+                        itemCount: vm.reports.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) =>
-                            _StaffReportCard(report: filtered[index]),
+                            _StaffReportCard(report: vm.reports[index]),
                       ),
                     ),
+
+                  // ── Pagination Controls ───────────────────────
+                  if (vm.totalPages > 1)
+                    SliverToBoxAdapter(child: _buildPaginationBar(theme, vm)),
 
                   const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
@@ -113,16 +111,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Filtering
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  List<Report> _filteredReports(List<Report> reports) {
-    if (_statusFilter == 'all') return reports;
-    return reports.where((r) => r.currentStatus == _statusFilter).toList();
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // UI Components
+  // Header
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildHeader(ThemeData theme, AuthViewModel authVm, String roleName) {
@@ -135,32 +124,27 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        roleName,
-                        style: const TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    roleName,
+                    style: const TextStyle(
+                      color: AppColors.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   name,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -180,92 +164,164 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     );
   }
 
-  Widget _buildStatsRow(ThemeData theme, StaffWorkflowViewModel vm) {
-    final newCount =
-        vm.reports.where((r) => r.currentStatus == 'newly_received').length;
-    final inProgressCount =
-        vm.reports.where((r) => r.currentStatus == 'in_progress').length;
-    final resolvedCount =
-        vm.reports.where((r) => r.currentStatus == 'resolved').length;
-    final rejectedCount =
-        vm.reports.where((r) => r.currentStatus == 'rejected').length;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Filter Section
+  // ═══════════════════════════════════════════════════════════════════════════
 
+  Widget _buildFilterSection(ThemeData theme, StaffWorkflowViewModel vm) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 20, 14, 0),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
         children: [
-          _StatCard(
-              label: 'Chờ duyệt',
-              count: newCount,
-              color: AppColors.statusNew,
-              bgColor: AppColors.statusNewBg),
-          _StatCard(
-              label: 'Đang xử lý',
-              count: inProgressCount,
-              color: AppColors.statusInProgress,
-              bgColor: AppColors.statusInProgressBg),
-          _StatCard(
-              label: 'Hoàn thành',
-              count: resolvedCount,
-              color: AppColors.statusResolved,
-              bgColor: AppColors.statusResolvedBg),
-          _StatCard(
-              label: 'Từ chối',
-              count: rejectedCount,
-              color: AppColors.statusRejected,
-              bgColor: AppColors.statusRejectedBg),
+          // ── Row 1: Status + Priority ────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _FilterDropdown<String>(
+                  label: 'Trạng thái',
+                  value: vm.statusFilter,
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'newly_received', child: Text('Chờ duyệt')),
+                    DropdownMenuItem(
+                        value: 'in_progress', child: Text('Đang xử lý')),
+                    DropdownMenuItem(
+                        value: 'resolved', child: Text('Hoàn thành')),
+                    DropdownMenuItem(value: 'rejected', child: Text('Từ chối')),
+                  ],
+                  onChanged: (v) => vm.setStatusFilter(v),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _FilterDropdown<String>(
+                  label: 'Ưu tiên',
+                  value: vm.priorityFilter,
+                  items: const [
+                    DropdownMenuItem(value: 'low', child: Text('Thấp')),
+                    DropdownMenuItem(
+                        value: 'medium', child: Text('Trung bình')),
+                    DropdownMenuItem(value: 'high', child: Text('Cao')),
+                    DropdownMenuItem(
+                        value: 'critical', child: Text('Nghiêm trọng')),
+                  ],
+                  onChanged: (v) => vm.setPriorityFilter(v),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // ── Row 2: Category + Clear button ──────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _FilterDropdown<int>(
+                  label: 'Danh mục',
+                  value: vm.categoryIdFilter,
+                  items: vm.categories
+                      .map((c) => DropdownMenuItem<int>(
+                            value: c.id,
+                            child: Text(c.name,
+                                overflow: TextOverflow.ellipsis, maxLines: 1),
+                          ))
+                      .toList(),
+                  onChanged: (v) => vm.setCategoryFilter(v),
+                ),
+              ),
+              if (vm.hasActiveFilters) ...[
+                const SizedBox(width: 10),
+                _ClearFilterButton(onTap: () => vm.clearFilters()),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChips(ThemeData theme) {
-    final filters = {
-      'all': 'Tất cả',
-      'newly_received': 'Chờ duyệt',
-      'in_progress': 'Đang xử lý',
-      'resolved': 'Hoàn thành',
-      'rejected': 'Từ chối',
-    };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Pagination
+  // ═══════════════════════════════════════════════════════════════════════════
 
+  Widget _buildPaginationBar(ThemeData theme, StaffWorkflowViewModel vm) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: filters.entries.map((e) {
-            final isSelected = _statusFilter == e.key;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(e.value),
-                selected: isSelected,
-                onSelected: (_) => setState(() => _statusFilter = e.key),
-                selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                checkmarkColor: AppColors.primary,
-                labelStyle: TextStyle(
-                  color:
-                      isSelected ? AppColors.primary : AppColors.textSecondary,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  fontSize: 13,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Previous
+          _PaginationButton(
+            icon: Icons.chevron_left_rounded,
+            enabled: vm.currentPage > 0,
+            onTap: () => vm.goToPage(vm.currentPage - 1),
+          ),
+          const SizedBox(width: 8),
+
+          // Page numbers
+          ...List.generate(
+            vm.totalPages > 5 ? 5 : vm.totalPages,
+            (index) {
+              // Show pages around current page
+              int page;
+              if (vm.totalPages <= 5) {
+                page = index;
+              } else if (vm.currentPage <= 2) {
+                page = index;
+              } else if (vm.currentPage >= vm.totalPages - 3) {
+                page = vm.totalPages - 5 + index;
+              } else {
+                page = vm.currentPage - 2 + index;
+              }
+
+              final isActive = page == vm.currentPage;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: GestureDetector(
+                  onTap: () => vm.goToPage(page),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isActive ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          isActive ? null : Border.all(color: AppColors.border),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${page + 1}',
+                      style: TextStyle(
+                        color:
+                            isActive ? Colors.white : AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ),
-                side: BorderSide(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 8),
+
+          // Next
+          _PaginationButton(
+            icon: Icons.chevron_right_rounded,
+            enabled: vm.currentPage < vm.totalPages - 1,
+            onTap: () => vm.goToPage(vm.currentPage + 1),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Empty / Error states
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildEmptyState(ThemeData theme, StaffWorkflowViewModel vm) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -278,12 +334,20 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   ?.copyWith(color: AppColors.textSecondary)),
           const SizedBox(height: 6),
           Text(
-            _statusFilter != 'all'
+            vm.hasActiveFilters
                 ? 'Thử đổi bộ lọc để xem báo cáo khác'
                 : 'Chưa có báo cáo nào trong hệ thống',
             style:
                 theme.textTheme.bodySmall?.copyWith(color: AppColors.textHint),
           ),
+          if (vm.hasActiveFilters) ...[
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () => vm.clearFilters(),
+              icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+              label: const Text('Xóa bộ lọc'),
+            ),
+          ],
         ],
       ),
     );
@@ -322,44 +386,120 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 }
 
-// ─── Stat Card ───────────────────────────────────────────────────────────────
+// ─── Filter Dropdown ─────────────────────────────────────────────────────────
 
-class _StatCard extends StatelessWidget {
+class _FilterDropdown<T> extends StatelessWidget {
   final String label;
-  final int count;
-  final Color color;
-  final Color bgColor;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
 
-  const _StatCard({
+  const _FilterDropdown({
     required this.label,
-    required this.count,
-    required this.color,
-    required this.bgColor,
+    required this.value,
+    required this.items,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: (MediaQuery.of(context).size.width - 60) / 4,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
+        color: value != null
+            ? AppColors.primary.withValues(alpha: 0.08)
+            : AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value != null ? AppColors.primary : AppColors.border,
+        ),
       ),
-      child: Column(
-        children: [
-          Text('$count',
-              style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w800, color: color)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: color.withValues(alpha: 0.8)),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-        ],
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          hint: Text(label,
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+          isExpanded: true,
+          style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w500),
+          items: [
+            DropdownMenuItem<T>(
+              value: null,
+              child: Text('Tất cả $label',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textHint,
+                      fontStyle: FontStyle.italic)),
+            ),
+            ...items,
+          ],
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Clear Filter Button ─────────────────────────────────────────────────────
+
+class _ClearFilterButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ClearFilterButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 48,
+        width: 48,
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        ),
+        child: const Icon(Icons.filter_alt_off_rounded,
+            size: 20, color: AppColors.error),
+      ),
+    );
+  }
+}
+
+// ─── Pagination Button ───────────────────────────────────────────────────────
+
+class _PaginationButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _PaginationButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: enabled ? AppColors.surfaceVariant : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border:
+              Border.all(color: enabled ? AppColors.border : AppColors.divider),
+        ),
+        child: Icon(icon,
+            size: 20,
+            color: enabled ? AppColors.textPrimary : AppColors.textHint),
       ),
     );
   }
@@ -369,7 +509,6 @@ class _StatCard extends StatelessWidget {
 
 class _StaffReportCard extends StatelessWidget {
   final Report report;
-
   const _StaffReportCard({required this.report});
 
   @override
@@ -389,7 +528,7 @@ class _StaffReportCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Title + Status ─────────────────────────────────────
+              // ── Title + Status ─────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -417,7 +556,7 @@ class _StaffReportCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // ── Info row ──────────────────────────────────────────
+              // ── Info row ──────────────────────────────────────
               Row(
                 children: [
                   const Icon(Icons.category_outlined,
@@ -446,7 +585,7 @@ class _StaffReportCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
 
-              // ── Citizen + date ────────────────────────────────────
+              // ── Citizen + date ────────────────────────────────
               Row(
                 children: [
                   const Icon(Icons.person_outline_rounded,

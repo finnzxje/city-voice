@@ -86,6 +86,7 @@ Future<void> main() async {
         ChangeNotifierProvider<StaffWorkflowViewModel>(
           create: (_) => StaffWorkflowViewModel(
             service: staffReportService,
+            categoryService: categoryService,
           ),
         ),
       ],

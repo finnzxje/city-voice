@@ -6,6 +6,19 @@ import '../../reports/models/report.dart';
 import '../models/review_request.dart';
 import '../models/reject_request.dart';
 
+/// Paginated result wrapper.
+class PaginatedResult {
+  final List<Report> reports;
+  final int totalPages;
+  final int currentPage;
+
+  const PaginatedResult({
+    required this.reports,
+    required this.totalPages,
+    required this.currentPage,
+  });
+}
+
 /// Service for staff / manager / admin report management API calls.
 class StaffReportService {
   final Dio _dio;
@@ -17,9 +30,10 @@ class StaffReportService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// GET /reports — returns paginated list of all reports.
-  Future<List<Report>> getReports({
+  Future<PaginatedResult> getReports({
     String? status,
     String? priority,
+    int? categoryId,
     int page = 0,
     int size = 20,
   }) async {
@@ -28,6 +42,7 @@ class StaffReportService {
       'size': size,
       if (status != null) 'status': status,
       if (priority != null) 'priority': priority,
+      if (categoryId != null) 'categoryId': categoryId,
     };
 
     final response = await _dio.get(
@@ -37,26 +52,39 @@ class StaffReportService {
 
     final data = response.data;
     if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<List<Report>>.fromJson(
+      final apiResponse = ApiResponse<PaginatedResult>.fromJson(
         data,
         fromJsonT: (json) {
           if (json is List) {
-            return json
-                .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                .toList();
+            return PaginatedResult(
+              reports: json
+                  .map((e) => Report.fromJson(e as Map<String, dynamic>))
+                  .toList(),
+              totalPages: 1,
+              currentPage: page,
+            );
           }
           // Paginated: { "content": [...], "totalPages": ..., ... }
           if (json is Map<String, dynamic> && json.containsKey('content')) {
-            return (json['content'] as List)
-                .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                .toList();
+            return PaginatedResult(
+              reports: (json['content'] as List)
+                  .map((e) => Report.fromJson(e as Map<String, dynamic>))
+                  .toList(),
+              totalPages: (json['totalPages'] as int?) ?? 1,
+              currentPage: (json['number'] as int?) ?? page,
+            );
           }
-          return [];
+          return PaginatedResult(
+            reports: [],
+            totalPages: 1,
+            currentPage: page,
+          );
         },
       );
-      return apiResponse.data ?? [];
+      return apiResponse.data ??
+          PaginatedResult(reports: [], totalPages: 1, currentPage: page);
     }
-    return [];
+    return PaginatedResult(reports: [], totalPages: 1, currentPage: page);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

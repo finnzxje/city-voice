@@ -1,64 +1,108 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../reports/models/incident_category.dart';
 import '../../reports/models/report.dart';
+import '../../reports/services/category_service.dart';
 import '../models/review_request.dart';
 import '../models/reject_request.dart';
 import '../services/staff_report_service.dart';
 
-/// ViewModel for the staff workflow feature.
-///
-/// Manages the filtered report list, action states (review / reject / resolve),
-/// and communicates with [StaffReportService].
 class StaffWorkflowViewModel extends ChangeNotifier {
   final StaffReportService _service;
+  final CategoryService _categoryService;
 
-  StaffWorkflowViewModel({required StaffReportService service})
-      : _service = service;
+  StaffWorkflowViewModel({
+    required StaffReportService service,
+    required CategoryService categoryService,
+  })  : _service = service,
+        _categoryService = categoryService;
 
   // ── Observable state ───────────────────────────────────────────────────────
 
   List<Report> _reports = [];
-
   List<Report> get reports => _reports;
 
   bool _isLoading = false;
-
   bool get isLoading => _isLoading;
 
   bool _isActionLoading = false;
-
   bool get isActionLoading => _isActionLoading;
 
   String? _errorMessage;
-
   String? get errorMessage => _errorMessage;
 
   String? _actionError;
-
   String? get actionError => _actionError;
 
-  String? _activeFilter;
-
-  String? get activeFilter => _activeFilter;
-
   Report? _selectedReport;
-
   Report? get selectedReport => _selectedReport;
+
+  // ── Filters ───────────────────────────────────────────────────────────────
+
+  String? _statusFilter;
+
+  String? get statusFilter => _statusFilter;
+
+  String? _priorityFilter;
+
+  String? get priorityFilter => _priorityFilter;
+
+  int? _categoryIdFilter;
+
+  int? get categoryIdFilter => _categoryIdFilter;
+
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  List<IncidentCategory> _categories = [];
+
+  List<IncidentCategory> get categories => _categories;
+
+  bool _categoriesLoaded = false;
+
+  /// Load categories (once).
+  Future<void> loadCategories() async {
+    if (_categoriesLoaded) return;
+    try {
+      _categories = await _categoryService.getCategories();
+      _categoriesLoaded = true;
+      notifyListeners();
+    } catch (_) {
+      // Non-critical — categories dropdown will just be empty.
+    }
+  }
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+
+  int _currentPage = 0;
+
+  int get currentPage => _currentPage;
+
+  int _totalPages = 1;
+
+  int get totalPages => _totalPages;
+
+  static const int pageSize = 15;
 
   // ── List / Filter ─────────────────────────────────────────────────────────
 
-  /// Loads reports with the current [_activeFilter] applied.
-  Future<void> loadReports() async {
+  /// Loads reports with the current filters + page applied via API query params.
+  Future<void> loadReports({int page = 0}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _reports = await _service.getReports(
-        status: _activeFilter,
-        size: 50,
+      final result = await _service.getReports(
+        status: _statusFilter,
+        priority: _priorityFilter,
+        categoryId: _categoryIdFilter,
+        page: page,
+        size: pageSize,
       );
+      _reports = result.reports;
+      _currentPage = result.currentPage;
+      _totalPages = result.totalPages;
     } on DioException catch (e) {
       _errorMessage = _extractError(e);
     } catch (e) {
@@ -69,10 +113,43 @@ class StaffWorkflowViewModel extends ChangeNotifier {
     }
   }
 
-  /// Switches the status filter and reloads.
-  void switchFilter(String? status) {
-    _activeFilter = status;
+  /// Sets the status filter and reloads from page 0.
+  void setStatusFilter(String? status) {
+    _statusFilter = status;
     loadReports();
+  }
+
+  /// Sets the priority filter and reloads from page 0.
+  void setPriorityFilter(String? priority) {
+    _priorityFilter = priority;
+    loadReports();
+  }
+
+  /// Sets the category filter and reloads from page 0.
+  void setCategoryFilter(int? categoryId) {
+    _categoryIdFilter = categoryId;
+    loadReports();
+  }
+
+  /// Clears all filters and reloads.
+  void clearFilters() {
+    _statusFilter = null;
+    _priorityFilter = null;
+    _categoryIdFilter = null;
+    loadReports();
+  }
+
+  /// Whether any filter is active.
+  bool get hasActiveFilters =>
+      _statusFilter != null ||
+      _priorityFilter != null ||
+      _categoryIdFilter != null;
+
+  /// Navigate to a specific page.
+  void goToPage(int page) {
+    if (page >= 0 && page < _totalPages) {
+      loadReports(page: page);
+    }
   }
 
   /// Loads a single report detail.
@@ -83,14 +160,15 @@ class StaffWorkflowViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // For simplicity, find in cached list first
+      // Find in cached list first
       final cached = _reports.where((r) => r.id == reportId).toList();
       if (cached.isNotEmpty) {
         _selectedReport = cached.first;
       } else {
         // Fallback: fetch all and find
-        final reports = await _service.getReports(size: 100);
-        _selectedReport = reports.where((r) => r.id == reportId).firstOrNull;
+        final result = await _service.getReports(size: 100);
+        _selectedReport =
+            result.reports.where((r) => r.id == reportId).firstOrNull;
       }
     } on DioException catch (e) {
       _errorMessage = _extractError(e);
@@ -201,7 +279,6 @@ class StaffWorkflowViewModel extends ChangeNotifier {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /// Replaces a report in the cached list with its updated version.
   void _replaceReport(Report updated) {
     final index = _reports.indexWhere((r) => r.id == updated.id);
     if (index >= 0) {
