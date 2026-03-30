@@ -9,17 +9,36 @@ class CategoryService {
 
   CategoryService({required Dio dio}) : _dio = dio;
 
+  List<IncidentCategory> _parseCategoryList(dynamic data) {
+    if (data is Map<String, dynamic> && data.containsKey('data')) {
+      final apiResponse = ApiResponse<List<IncidentCategory>>.fromJson(
+        data,
+        fromJsonT: (json) {
+          if (json is List) {
+            return json
+                .map((item) =>
+                    IncidentCategory.fromJson(item as Map<String, dynamic>))
+                .toList();
+          }
+          return <IncidentCategory>[];
+        },
+      );
+      return apiResponse.data ?? [];
+    }
+
+    if (data is List) {
+      return data
+          .map(
+              (item) => IncidentCategory.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    return [];
+  }
+
   /// Fetches all active categories.
   Future<List<IncidentCategory>> getCategories() async {
     final response = await _dio.get(ApiConstants.categories);
-
-    final data = response.data;
-    if (data is List) {
-      return data.map((item) {
-        // Mỗi item trong List là một Map chứa id, name, slug, iconKey
-        return IncidentCategory.fromJson(item as Map<String, dynamic>);
-      }).toList();
-    }
-    return [];
+    return _parseCategoryList(response.data);
   }
 }

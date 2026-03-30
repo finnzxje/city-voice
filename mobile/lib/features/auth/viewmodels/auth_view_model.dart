@@ -15,7 +15,9 @@ class AuthViewModel extends ChangeNotifier {
     required AuthService authService,
     required SecureStorageHelper storage,
   })  : _authService = authService,
-        _storage = storage;
+        _storage = storage {
+    _storage.addListener(_handleStorageChanged);
+  }
 
   // ── Observable state ───────────────────────────────────────────────────────
   UserInfo? _user;
@@ -32,6 +34,10 @@ class AuthViewModel extends ChangeNotifier {
 
   bool _isAuthenticated = false;
   bool get isAuthenticated => _isAuthenticated;
+
+  bool _isRestoringSession = true;
+
+  bool get isRestoringSession => _isRestoringSession;
 
   /// Whether the OTP was already sent (for OTP login mode).
   bool _otpSent = false;
@@ -65,6 +71,28 @@ class AuthViewModel extends ChangeNotifier {
   void resetOtpState() {
     _otpSent = false;
     notifyListeners();
+  }
+
+  void _handleStorageChanged() {
+    _syncAuthStateWithStorage();
+  }
+
+  Future<void> _syncAuthStateWithStorage() async {
+    final hasToken = await _storage.hasTokens();
+    if (hasToken) return;
+
+    final shouldNotify =
+        _user != null || _isAuthenticated || _otpSent || _errorMessage != null;
+
+    _user = null;
+    _isAuthenticated = false;
+    _otpSent = false;
+    _errorMessage = null;
+    _successMessage = null;
+
+    if (shouldNotify) {
+      notifyListeners();
+    }
   }
 
   /// Extracts a user-facing error message from a [DioException].
@@ -246,16 +274,22 @@ class AuthViewModel extends ChangeNotifier {
   // ── Try restoring session from stored tokens ───────────────────────────
   /// Called at app startup to check if the user is already logged in.
   Future<void> tryAutoLogin() async {
-    final hasToken = await _storage.hasTokens();
-    if (!hasToken) return;
-
     try {
+      final hasToken = await _storage.hasTokens();
+      if (!hasToken) {
+        _isAuthenticated = false;
+        _user = null;
+        return;
+      }
+
       await _fetchAndSetUser();
     } catch (_) {
       // Token likely expired and couldn't refresh — clear state.
       await _storage.clearAll();
       _isAuthenticated = false;
       _user = null;
+    } finally {
+      _isRestoringSession = false;
       notifyListeners();
     }
   }
@@ -279,5 +313,11 @@ class AuthViewModel extends ChangeNotifier {
     _user = await _authService.fetchCurrentUser();
     _isAuthenticated = true;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _storage.removeListener(_handleStorageChanged);
+    super.dispose();
   }
 }

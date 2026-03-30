@@ -55,5 +55,10 @@ dev_dependencies:
   freezed: ^2.5.8
   json_serializable: ^6.9.4
 
+
+  stomp_dart_client: ^2.0.0
+  badges: ^3.1.2
+  timeago: ^3.7.0
+
 flutter:
   uses-material-design: true
