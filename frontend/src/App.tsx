@@ -19,12 +19,13 @@ import StaffDashboard from "./pages/staff/DashboardStaff";
 import StaffReportDetails from "./pages/staff/ReportDetails";
 
 // Manager & Admin Pages
-import ManagerDashboard from "./pages/manager/Dashboard";
+import ManagerDashboard from "./pages/manager/DashboardManager";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Home from "./pages/Home";
 import UsersTab from "./pages/admin/components/UsersTab";
 import CategoriesTab from "./pages/admin/components/CategoriesTab";
 import HeaderManager from "./pages/manager/HeaderManager";
+import ReportManager from "./pages/staff/ReportManager";
 
 const ProtectedRoute = ({
   children,
@@ -114,7 +115,9 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/staff" replace />} />
+        <Route index element={<Navigate to="/staff/reports" replace />} />
+        <Route path="reports" element={<ReportManager />} />
+        <Route path="reports/:id" element={<StaffReportDetails />} />
       </Route>
       {/* Admin nested routes */}
       <Route
@@ -128,6 +131,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/admin/users" replace />} />
         <Route path="users" element={<UsersTab />} />
         <Route path="categories" element={<CategoriesTab />} />
+        <Route path="dashboard" element={<ManagerDashboard />} />
       </Route>
 
       <Route
