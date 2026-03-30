@@ -59,4 +59,14 @@ class ApiConstants {
 
   /// Returns the path to mark a notification as read.
   static String markNotificationRead(String id) => '/notifications/$id/read';
+
+  // ── Admin endpoints ─────────────────────────────────────────────────────
+  static const String adminRoles = '/admin/roles';
+  static const String adminUsers = '/admin/users';
+
+  /// Returns the path to update a user's role.
+  static String adminUserRole(String userId) => '/admin/users/$userId/role';
+
+  /// Returns the path for a specific category (update).
+  static String categoryById(int id) => '/categories/$id';
 }

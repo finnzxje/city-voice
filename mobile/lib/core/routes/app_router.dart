@@ -11,14 +11,18 @@ import '../../features/reports/views/submit_report_screen.dart';
 import '../../features/reports/views/report_detail_screen.dart';
 import '../../features/review/views/staff_report_detail_screen.dart';
 import '../../features/notifications/views/notifications_screen.dart';
+import '../../features/admin/views/admin_dashboard_screen.dart';
+import '../../features/admin/views/admin_user_list_screen.dart';
+import '../../features/admin/views/admin_category_list_screen.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
 /// Uses [GoRouter] with a redirect guard that sends unauthenticated
 /// users to the login screen and routes authenticated users to the
 /// appropriate dashboard based on their role:
-///   - citizen → `/dashboard`
-///   - staff/manager/admin → `/staff-dashboard`
+///   - citizen        → `/dashboard`
+///   - staff/manager  → `/staff-dashboard`
+///   - admin          → `/admin-dashboard`
 class AppRouter {
   final SecureStorageHelper _storage;
   final AuthViewModel _authViewModel;
@@ -90,7 +94,7 @@ class AppRouter {
         builder: (context, state) => const NotificationsScreen(),
       ),
 
-      // ── Staff / Manager / Admin routes ─────────────────────────────
+      // ── Staff / Manager routes ────────────────────────────────────────
       GoRoute(
         path: '/staff-dashboard',
         name: 'staff-dashboard',
@@ -103,6 +107,23 @@ class AppRouter {
           final id = state.pathParameters['id']!;
           return StaffReportDetailScreen(reportId: id);
         },
+      ),
+
+      // ── Admin routes ──────────────────────────────────────────────────
+      GoRoute(
+        path: '/admin-dashboard',
+        name: 'admin-dashboard',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/admin/users',
+        name: 'admin-users',
+        builder: (context, state) => const AdminUserListScreen(),
+      ),
+      GoRoute(
+        path: '/admin/categories',
+        name: 'admin-categories',
+        builder: (context, state) => const AdminCategoryListScreen(),
       ),
     ],
   );
@@ -141,17 +162,35 @@ class AppRouter {
     }
 
     final role = authVm.user?.role;
-    final isInternal = role == 'staff' || role == 'manager' || role == 'admin';
+    final isAdmin = role == 'admin';
+    final isStaffOrManager = role == 'staff' || role == 'manager';
+    final isCitizen = role == 'citizen';
+
+    // ── Admin route guard ────────────────────────────────────────────────
+    final isAdminRoute =
+        currentPath == '/admin-dashboard' || currentPath.startsWith('/admin/');
+    if (isAdminRoute && !isAdmin) {
+      return homepage;
+    }
+
+    // ── Role-based cross-routing guards ──────────────────────────────────
     final isCitizenOnlyRoute =
         currentPath == '/dashboard' || currentPath == '/reports/new';
-    final isStaffOnlyRoute = currentPath == '/staff-dashboard' ||
+    final isStaffRoute = currentPath == '/staff-dashboard' ||
         currentPath.startsWith('/staff-reports');
 
-    if (isInternal && isCitizenOnlyRoute) {
+    // Admin trying to access citizen-only routes → admin dashboard
+    if (isAdmin && isCitizenOnlyRoute) {
+      return '/admin-dashboard';
+    }
+
+    // Staff/manager trying to access citizen-only routes
+    if (isStaffOrManager && isCitizenOnlyRoute) {
       return '/staff-dashboard';
     }
 
-    if (!isInternal && isStaffOnlyRoute) {
+    // Citizen trying to access staff/admin routes
+    if (isCitizen && (isStaffRoute || isAdminRoute)) {
       return '/dashboard';
     }
 
@@ -161,9 +200,8 @@ class AppRouter {
   /// Returns the correct homepage path based on the user's role.
   String _homepageForRole(AuthViewModel authVm) {
     final role = authVm.user?.role;
-    if (role == 'staff' || role == 'manager' || role == 'admin') {
-      return '/staff-dashboard';
-    }
+    if (role == 'admin') return '/admin-dashboard';
+    if (role == 'staff' || role == 'manager') return '/staff-dashboard';
     return '/dashboard';
   }
 }
