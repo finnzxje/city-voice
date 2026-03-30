@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'features/notifications/views/widgets/notification_overlay_listener.dart';
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
 
@@ -22,6 +23,10 @@ class CityVoiceApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      builder: (context, child) => NotificationOverlayListener(
+        navigatorKey: appRouter.navigatorKey,
+        child: child ?? const SizedBox.shrink(),
+      ),
 
       // ── Routing ────────────────────────────────────────────────────────
       routerConfig: appRouter.router,

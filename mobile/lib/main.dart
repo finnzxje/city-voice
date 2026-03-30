@@ -3,14 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'app.dart';
 import 'core/network/dio_client.dart';
 import 'core/routes/app_router.dart';
 import 'core/storage/secure_storage_helper.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/auth/viewmodels/auth_view_model.dart';
+import 'features/notifications/services/notification_service.dart';
+import 'features/notifications/viewmodels/notification_view_model.dart';
 import 'features/reports/services/category_service.dart';
-import 'features/reports/services/notification_service.dart';
 import 'features/reports/services/report_service.dart';
 import 'features/reports/viewmodels/report_view_model.dart';
 import 'features/review/services/staff_report_service.dart';
@@ -18,6 +20,8 @@ import 'features/review/viewmodels/staff_workflow_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  timeago.setLocaleMessages('vi', timeago.ViMessages());
 
   // Lock to portrait orientation.
   SystemChrome.setPreferredOrientations([
@@ -34,9 +38,6 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-
-  // Location permission is requested asynchronously after runApp
-  // so the UI renders immediately without blocking.
 
   // ── Core dependencies ──────────────────────────────────────────────────
   final storage = SecureStorageHelper();
@@ -72,12 +73,10 @@ Future<void> main() async {
         // Reports
         Provider<ReportService>.value(value: reportService),
         Provider<CategoryService>.value(value: categoryService),
-        Provider<NotificationService>.value(value: notificationService),
         ChangeNotifierProvider<ReportViewModel>(
           create: (_) => ReportViewModel(
             reportService: reportService,
             categoryService: categoryService,
-            notificationService: notificationService,
           ),
         ),
 
@@ -87,6 +86,13 @@ Future<void> main() async {
           create: (_) => StaffWorkflowViewModel(
             service: staffReportService,
             categoryService: categoryService,
+          ),
+        ),
+
+        // Notifications
+        ChangeNotifierProvider<NotificationViewModel>(
+          create: (_) => NotificationViewModel(
+            notificationService: notificationService,
           ),
         ),
       ],
@@ -99,17 +105,11 @@ Future<void> main() async {
 }
 
 /// Requests location permission before the app launches.
-///
-/// Steps:
-///   1. Check if the device's location service is turned on.
-///   2. If turned off → open system location settings.
-///   3. Check permission status — request if [denied].
 Future<void> _requestLocationPermission() async {
   try {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await Geolocator.openLocationSettings();
-      // Re-check after returning from settings
       serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) return;
     }
@@ -118,8 +118,6 @@ Future<void> _requestLocationPermission() async {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    // If deniedForever, the user must go to app settings manually.
-    // We don't block the app — the submit screen will handle it too.
   } catch (_) {
     // Swallow — location is not critical for app startup.
   }
