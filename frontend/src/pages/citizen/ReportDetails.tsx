@@ -6,7 +6,8 @@ import Footer from "../../components/Footer";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { AlertOctagon, ArrowLeft, CheckCircle2, ChevronDown, ChevronsUp, ClipboardList, Clock, HelpCircle, Mail, MapPin, Minus, XCircle } from "lucide-react";
+import { AlertOctagon, ArrowLeft, CheckCircle2, ChevronDown, ChevronsUp, ClipboardList, Clock, HelpCircle, Mail, MapPin, Minus, User, XCircle } from "lucide-react";
+import ImageZoom from "../../components/ImageZoom";
 
 // @ts-ignore
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -19,7 +20,7 @@ L.Icon.Default.mergeOptions({
 export default function ReportDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -107,8 +108,8 @@ export default function ReportDetails() {
         return {
           label: "Ưu tiên thấp",
           icon: <ChevronDown size={16} />,
-          color: "text-green-600",
-          bgColor: "bg-green-50"
+          color: "text-blue-600",
+          bgColor: "bg-blue-50"
         };
       default:
         return {
@@ -233,6 +234,7 @@ export default function ReportDetails() {
                     {report.description || "Không có mô tả chi tiết."}
                   </p>
                 </div>
+                <ImageZoom src={report.incidentImageUrl} />
               </div>
             </section>
 
@@ -280,23 +282,76 @@ export default function ReportDetails() {
 
             {/* Optional Staff Assignment Info */}
             {report.assignedToName && (
-              <section className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border-l-4 border-blue-500">
+              <section className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border-l-4 border-blue-500 transition-all">
                 <div className="flex justify-between items-start mb-6">
-                  <h2 className="text-xl font-bold flex items-center gap-2 font-headline">
-                    <span className="material-symbols-outlined text-blue-600">engineering</span>
-                    Cán bộ xử lý
+                  <h2 className="text-xl font-bold flex items-center gap-2 font-headline text-on-surface">
+                    <div className="w-5 h-5 bg-blue-600 rounded"></div>
+                    <span>Cán bộ xử lý</span>
                   </h2>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${report.resolutionImageUrl ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {report.resolutionImageUrl ? "Đã có kết quả" : "Đang xử lý"}
+                  </span>
                 </div>
                 <div className="flex gap-6 items-start">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 shrink-0 flex items-center justify-center text-blue-600">
-                    <span className="material-symbols-outlined text-2xl">person</span>
-                  </div>
                   <div className="flex-1">
-                    <p className="font-bold text-sm text-on-surface">{report.assignedToName}</p>
-                    <p className="text-xs text-on-surface-variant mb-4">Cán bộ phụ trách ({report.assignedToId})</p>
+                    <div className="mb-4">
+                      <p className="font-bold text-base text-on-surface">{report.assignedToName}</p>
+                      <p className="text-xs text-on-surface-variant italic">ID Cán bộ: {report.assignedToId}</p>
+                    </div>
+                    {report.resolutionImageUrl ? (
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-green-600 flex items-center gap-1">
+                          KẾT QUẢ NGHIỆM THU:
+                        </p>
+                        <div
+                          className="relative group w-32 h-32 md:w-48 md:h-32 rounded-lg overflow-hidden border-2 border-green-200 cursor-zoom-in"
+                          onClick={() => setSelectedImage(report.resolutionImageUrl!.replace("http://minio:9000", "http://localhost:9000"))}
+                        >
+                          <img
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            src={report.resolutionImageUrl.replace("http://minio:9000", "http://localhost:9000")}
+                            alt="Kết quả nghiệm thu"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="text-white text-xs font-medium bg-black/50 px-2 py-1 rounded-md">Xem ảnh lớn</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/50">
+                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                        <p className="text-sm font-medium text-on-surface-variant">
+                          Hiện trường đang được giải quyết...
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </section>
+            )}
+
+            {/* LIGHTBOX (LỚP PHỦ HIỂN THỊ ẢNH TO) */}
+            {selectedImage && (
+              <div
+                className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-zoom-out backdrop-blur-sm"
+                onClick={() => setSelectedImage(null)} // Nhấp ra ngoài để đóng
+              >
+                {/* Nút đóng ảnh (Tùy chọn) */}
+                <button
+                  className="absolute top-4 right-4 text-white hover:text-gray-300 z-50 p-2"
+                  onClick={() => setSelectedImage(null)}
+                >
+                  Đóng
+                </button>
+
+                {/* Ảnh kích thước đầy đủ */}
+                <img
+                  src={selectedImage}
+                  alt="Ảnh nghiệm thu kích thước lớn"
+                  className="max-w-full max-h-full rounded-lg shadow-2xl transition-transform duration-300 ease-out"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
             )}
           </div>
 
@@ -313,13 +368,20 @@ export default function ReportDetails() {
                   <div className="relative pl-10 pb-8">
                     <div className={`absolute left-2.5 top-1.5 w-3.5 h-3.5 rounded-full ${statusInfo.bg.replace("bg-", "bg-").split(" ")[0] || "bg-primary"} ring-4 ring-white z-10`}></div>
                     <p className="text-sm font-bold text-on-surface">{statusInfo.label}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">{report.resolvedAt && new Date(report.resolvedAt).toLocaleDateString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}</p>
                     <p className="text-xs text-on-surface-variant mt-1">Trạng thái hiện tại</p>
                   </div>
 
                   <div className="relative pl-10">
                     <div className="absolute left-2.5 top-1.5 w-3.5 h-3.5 rounded-full bg-slate-300 ring-4 ring-white z-10"></div>
                     <p className="text-sm font-bold text-on-surface">Đã gửi báo cáo</p>
-                    <p className="text-xs text-on-surface-variant mt-1">{new Date(report.createdAt).toLocaleDateString("vi-VN")}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">{new Date(report.createdAt).toLocaleDateString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}</p>
                     <p className="text-xs mt-2 text-on-surface-variant leading-tight">Hệ thống đã ghi nhận phản ánh của bạn.</p>
                   </div>
                 </div>

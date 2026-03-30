@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import IncidentHeatmap from "../../components/IncidentHeatmap";
-import HeaderManager from "./HeaderManager";
 
 
 
@@ -161,7 +160,7 @@ export default function ManagerDashboard() {
 
     return (
       <div className="flex items-center gap-6">
-        <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
+        <svg width="120" height="120" viewBox="0 0 120 120" className="shrink-0">
           {data.map((d) => {
             const pct = d.value / total;
             const offset = circumference * (1 - cumulative);
@@ -190,7 +189,7 @@ export default function ManagerDashboard() {
         <div className="space-y-2 flex-1">
           {data.map((d) => (
             <div key={d.key} className="flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0`} style={{ backgroundColor: colors[d.key] }} />
+              <span className={`h-2.5 w-2.5 rounded-full shrink-0`} style={{ backgroundColor: colors[d.key] }} />
               <span className="text-sm text-gray-600 flex-1">{STATUS_CONFIG[d.key]?.label || d.key}</span>
               <span className="text-sm font-semibold text-gray-900">{d.value}</span>
             </div>
@@ -201,7 +200,7 @@ export default function ManagerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-purple-50/30 flex flex-col">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-gray-50 to-purple-50/30 flex flex-col">
       {/* ══ MAIN ══ */}
       <main className="flex-1 w-full space-y-6">
 

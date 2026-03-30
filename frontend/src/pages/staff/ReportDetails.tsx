@@ -163,14 +163,25 @@ export default function StaffReportDetails() {
     high: "cao",
     critical: "khẩn cấp"
   }
+  const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    critical: { label: "Nghiêm trọng", color: "bg-red-500", bg: "bg-red-50 text-red-700 border-red-200" },
+    high: { label: "Cao", color: "bg-orange-500", bg: "bg-orange-50 text-orange-700 border-orange-200" },
+    medium: { label: "Trung bình", color: "bg-amber-400", bg: "bg-amber-50 text-amber-700 border-amber-200" },
+    low: { label: "Thấp", color: "bg-sky-400", bg: "bg-sky-50 text-sky-700 border-sky-200" },
+  };
+
+  const priority = report.priority || 'low';
+  const config = PRIORITY_CONFIG[priority];
   // Convert status back to readable history
   const historyItems = [
     { title: "Báo cáo được khởi tạo", date: report.createdAt, by: report.citizenName || report.citizenPhone || "Người dân" }
   ];
   if (report.currentStatus === 'in_progress' || report.currentStatus === 'resolved') {
+    console.log(report);
     historyItems.push({ title: "Đã phân công xử lý", date: report.updatedAt || report.createdAt, by: "Hệ thống / Staff" });
   }
   if (report.currentStatus === 'resolved') {
+    console.log(report);
     historyItems.push({ title: "Đã nghiệm thu", date: report.updatedAt || report.createdAt, by: "Hệ thống / Staff" });
   }
   if (report.currentStatus === 'rejected') {
@@ -205,6 +216,13 @@ export default function StaffReportDetails() {
             <section className="bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-surface-container/50 transition-all hover:-translate-y-1">
               <div className="flex flex-col gap-2 mb-6">
                 <span className="text-primary font-bold text-xs uppercase tracking-widest">{report.categoryName}</span>
+                {/* Badge Priority mới */}
+                {report.priority && (
+                  <div className={`flex items-center w-fit gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-bold uppercase shadow-sm ${PRIORITY_CONFIG[report.priority].bg}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_CONFIG[report.priority].color}`} />
+                    {PRIORITY_CONFIG[report.priority].label}
+                  </div>
+                )}
                 <h2 className="text-3xl font-extrabold text-on-surface leading-tight font-headline">{report.title}</h2>
                 <div className="flex flex-wrap items-center gap-4 mt-2 text-on-surface-variant text-sm font-medium">
                   <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(report.createdAt).toLocaleString()}</span>
@@ -234,14 +252,14 @@ export default function StaffReportDetails() {
                     </div>
                   </div>
                 )}
-                {report.proofImageUrl && (
+                {report.resolutionImageUrl && (
                   <div className="rounded-lg overflow-hidden relative group aspect-video border-2 border-green-500">
                     <div className="absolute top-2 left-2 z-10 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> ẢNH NGHIỆM THU
                     </div>
                     <img
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      src={report.proofImageUrl.replace("http://minio:9000", "http://localhost:9000")}
+                      src={report.resolutionImageUrl.replace("http://minio:9000", "http://localhost:9000")}
                       alt="Ảnh hoàn thành"
                     />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>

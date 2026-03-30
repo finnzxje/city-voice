@@ -113,7 +113,7 @@ export default function DashboardCitizen() {
                   : "text-gray-500 hover:text-gray-700"
                   }`}
               >
-                <List className="h-4 w-4 mr-2" /> List
+                <List className="h-4 w-4 mr-2" /> Danh sách
               </button>
               <button
                 onClick={() => setViewMode("map")}
@@ -122,7 +122,7 @@ export default function DashboardCitizen() {
                   : "text-gray-500 hover:text-gray-700"
                   }`}
               >
-                <MapIcon className="h-4 w-4 mr-2" /> Map
+                <MapIcon className="h-4 w-4 mr-2" /> Bản đồ
               </button>
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function DashboardCitizen() {
                           onClick={() => navigate(`/reports/${report.id}`)}
                           className="px-4 py-2 text-sm font-bold bg-primary text-white hover:bg-primary-container rounded-lg transition-all shadow-sm active:scale-95"
                         >
-                          View Details
+                          Xem chi tiết
                         </button>
                       </div>
                     </div>

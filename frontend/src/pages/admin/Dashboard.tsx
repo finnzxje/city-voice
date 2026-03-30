@@ -28,10 +28,15 @@ export default function AdminDashboard() {
         </div>
 
         <nav className="flex-1 space-y-1 py-5">
-          <Link to="/" className="flex items-center px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-all duration-200 cursor-pointer text-sm font-medium rounded-lg">
+          <NavLink to="/admin/dashboard" className={({ isActive }) =>
+            `w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer hover:translate-y-0 active:scale-100 ${isActive
+              ? "bg-surface-container-lowest text-primary shadow-sm"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low"
+            }`
+          }>
             <LayoutDashboard className="mr-3 h-5 w-5" />
-            Home
-          </Link>
+            Dashboard
+          </NavLink>
 
           <NavLink
             to="/admin/users"
