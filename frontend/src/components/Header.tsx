@@ -19,7 +19,7 @@ const Header = () => {
                 <nav className="hidden lg:flex space-x-6 font-headline font-medium">
                     {user?.role === "citizen" && (
                         <>
-                            <Link to="/citizen/dashboard" className="text-slate-600 hover:text-primary transition-colors">Dashboard</Link>
+                            <Link to="/citizen/dashboard" className="text-slate-600 hover:text-primary transition-colors">Tổng quan</Link>
                             <Link to="/reports/new" className="text-slate-600 hover:text-primary transition-colors">Báo cáo</Link>
                         </>
                     )}

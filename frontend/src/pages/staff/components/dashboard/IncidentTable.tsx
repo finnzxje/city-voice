@@ -52,10 +52,10 @@ export default function IncidentTable({
 
   const getPriorityColor = (priority: string | undefined | null) => {
     switch (priority) {
-      case "critical": return "bg-error-container text-[#93000a]";
-      case "high": return "bg-orange-100 text-orange-800";
-      case "medium": return "bg-[#e0e3e7] text-[#424656]";
-      case "low": return "bg-[#e0e3e7] text-[#424656] opacity-60";
+      case "critical": return "bg-red-50 text-red-700 border-red-200";
+      case "high": return "bg-orange-50 text-orange-700 border-orange-200";
+      case "medium": return "bg-amber-50 text-amber-700 border-amber-200";
+      case "low": return "bg-sky-50 text-sky-700 border-sky-200";
       default: return "bg-[#e0e3e7] text-[#424656]";
     }
   };
@@ -158,7 +158,7 @@ export default function IncidentTable({
                     </td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => navigate(`/reports/${report.id}`)}
+                        onClick={() => navigate(`/staff/reports/${report.id}`)}
                         className="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-primary"
                         title="Xem chi tiết"
                       >

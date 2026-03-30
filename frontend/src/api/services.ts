@@ -19,13 +19,14 @@ export interface ReportResponse {
   incidentImageUrl: string;
   currentStatus: string;
   createdAt: string;
+  resolvedAt?: string;
   priority?: "low" | "medium" | "high" | "critical";
   citizenId?: string;
   citizenName?: string;
   citizenPhone?: string;
   assignedToId?: string;
   assignedToName?: string;
-  proofImageUrl?: string;
+  resolutionImageUrl?: string;
   updatedAt?: string;
 }
 
@@ -125,22 +126,22 @@ export interface AnalyticsStats {
 }
 
 export const AnalyticsAPI = {
-  getHeatmap: (params?: any) => 
+  getHeatmap: (params?: any) =>
     apiClient.get<ApiResponse<HeatmapPoint[]>>("/analytics/heatmap", { params }),
 
-  getStats: (params?: any) => 
+  getStats: (params?: any) =>
     apiClient.get<ApiResponse<AnalyticsStats>>("/analytics/stats", { params }),
 };
 
 export const AdminAPI = {
   getRoles: () => apiClient.get<ApiResponse<string[]>>("/admin/roles"),
   getUsers: () => apiClient.get<ApiResponse<UserInfo[]>>("/admin/users"),
-  updateUserRole: (userId: string, role: string) => 
+  updateUserRole: (userId: string, role: string) =>
     apiClient.put(`/admin/users/${userId}/role`, { role }),
-    
-  createCategory: (data: { name: string; slug: string; iconKey: string; active?: boolean }) => 
+
+  createCategory: (data: { name: string; slug: string; iconKey: string; active?: boolean }) =>
     apiClient.post("/categories", data),
-  updateCategory: (id: number, data: Partial<{ name: string; slug: string; iconKey: string; active: boolean }>) => 
+  updateCategory: (id: number, data: Partial<{ name: string; slug: string; iconKey: string; active: boolean }>) =>
     apiClient.put(`/categories/${id}`, data)
 };
 
