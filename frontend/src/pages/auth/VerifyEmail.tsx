@@ -1,38 +1,86 @@
-import React, { useState } from "react";
-import { useNavigate, useLocation, Navigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation, Navigate, Link } from "react-router-dom";
 import { AuthAPI } from "../../api/services";
-import {
-  MailCheck,
-  KeyRound,
-  ArrowRight,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
+import AuthLayout from "../../layouts/AuthLayout";
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email || "";
-  const [otp, setOtp] = useState("");
+
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [msg, setMsg] = useState(
-    email ? "Mã xác minh đã được gửi đến email của bạn." : "",
-  );
+  const [countdown, setCountdown] = useState(60);
 
   // If no email in state, they probably shouldn't be here directly
   if (!email) {
     return <Navigate to="/register" />;
   }
 
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  const handleChange = (index: number, value: string) => {
+    if (isNaN(Number(value))) return;
+
+    const newOtp = [...otp];
+    // take only the last character in case they paste multiple
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+
+    // move backward after delete
+    if (value === "" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    // Move forward 
+    if (value !== "" && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "Enter" && otp.join("").length === 6) {
+      handleVerify(e as any);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pastedData) {
+      const newOtp = [...otp];
+      for (let i = 0; i < pastedData.length; i++) {
+        newOtp[i] = pastedData[i];
+      }
+      setOtp(newOtp);
+      // focus the last filled input or the next empty one
+      const focusIndex = Math.min(pastedData.length, 5);
+      inputRefs.current[focusIndex]?.focus();
+    }
+  };
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) return;
+
     setLoading(true);
     setError("");
 
     try {
-      await AuthAPI.verifyEmail({ email, otp });
+      await AuthAPI.verifyEmail({ email, otp: otpValue });
       navigate("/login", {
         state: { message: "Xác minh email thành công! Bạn có thể đăng nhập ngay bây giờ." },
       });
@@ -46,12 +94,13 @@ export default function VerifyEmail() {
   };
 
   const handleResend = async () => {
+    if (countdown > 0) return;
+
     setLoading(true);
     setError("");
-    setMsg("");
     try {
       await AuthAPI.resendVerification({ email });
-      setMsg("Một mã xác minh mới đã được gửi đi.");
+      setCountdown(60);
     } catch (err: any) {
       setError(err.response?.data?.message || "Gửi lại mã thất bại.");
     } finally {
@@ -60,80 +109,80 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50 p-8 sm:p-12">
-          <div className="text-center mb-8">
-            <div className="mx-auto h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-              <MailCheck size={32} />
-            </div>
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Xác minh email của bạn
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Chúng tôi vừa gửi một mã 6 số đến{" "}
-              <span className="font-semibold text-gray-900">{email}</span>
-            </p>
+    <AuthLayout>
+      <div className="bg-white rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-10 relative">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-[13px] font-bold text-gray-500 hover:text-gray-900 transition-colors mb-8"
+        >
+          <ArrowLeft size={16} className="mr-2" /> Trở lại
+        </button>
+
+        <div className="mb-8">
+          <h2 className="text-[28px] font-extrabold text-gray-900 tracking-tight mb-3">
+            Xác thực tài khoản
+          </h2>
+          <p className="text-[15px] text-gray-500 font-medium">
+            Vui lòng nhập mã OTP đã được gửi đến email của bạn
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50/80 border-l-4 border-red-500 p-3 flex items-center shadow-sm">
+            <AlertCircle className="text-red-500 mr-2 shrink-0" size={18} />
+            <p className="text-[13px] text-red-700 font-bold">{error}</p>
           </div>
+        )}
 
-          {error && (
-            <div className="mb-6 bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded-r-lg flex items-center">
-              <AlertCircle className="text-red-500 mr-3 shrink-0" size={20} />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          {msg && !error && (
-            <div className="mb-6 bg-green-50/80 backdrop-blur-sm border-l-4 border-green-500 p-4 rounded-r-lg flex items-center">
-              <MailCheck className="text-green-500 mr-3 shrink-0" size={20} />
-              <p className="text-sm text-green-700">{msg}</p>
-            </div>
-          )}
-
-          <form className="space-y-6" onSubmit={handleVerify}>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <KeyRound className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-              </div>
+        <form className="space-y-8" onSubmit={handleVerify}>
+          <div className="grid grid-cols-6 gap-3 sm:gap-4">
+            {otp.map((data, index) => (
               <input
+                key={index}
                 type="text"
-                required
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="block w-full pl-11 pr-4 py-4 border border-gray-200 rounded-xl leading-5 bg-white/50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all duration-200 text-center text-xl font-mono tracking-[0.5em]"
-                placeholder="------"
-                maxLength={6}
+                ref={(el) => { inputRefs.current[index] = el; }}
+                value={data}
+                onChange={(e) => handleChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
+                autoComplete="off"
+                className={`w-full aspect-square text-center text-2xl font-semibold rounded-[12px] transition-all bg-gray-200/50 border-2 outline-none
+                  ${data
+                    ? "border-[#0055d4] bg-white text-[#0055d4] shadow-[0_0_12px_rgba(0,85,212,0.15)]"
+                    : "border-transparent text-gray-900 focus:bg-white focus:border-[#0055d4]/40"
+                  }`}
+                maxLength={1}
               />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || otp.length !== 6}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? "Đang xác minh..." : "Xác minh Email"}
-              {!loading && (
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              )}
-            </button>
-          </form>
-
-          <div className="mt-8 text-center bg-gray-50/50 p-4 rounded-xl">
-            <p className="text-sm text-gray-600">Bạn chưa nhận được mã?</p>
-            <button
-              onClick={handleResend}
-              disabled={loading}
-              className="mt-2 inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-70"
-            >
-              <RefreshCw
-                size={16}
-                className={`mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Gửi lại mã xác minh
-            </button>
+            ))}
           </div>
+
+          <button
+            type="submit"
+            disabled={loading || otp.join("").length !== 6}
+            className="w-full flex justify-center py-4 rounded-[10px] text-[15px] font-bold text-white bg-[#0055d4] hover:bg-[#004bbd] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0055d4] transition-all shadow-[0_4px_12px_rgba(0,85,212,0.25)] disabled:opacity-70 disabled:cursor-not-allowed items-center"
+          >
+            {loading ? "Đang xác minh..." : "Xác nhận mã"}
+          </button>
+        </form>
+
+        <div className="mt-8 text-center text-[13px] text-gray-500 font-medium tracking-wide">
+          Chưa nhận được mã?{" "}
+          <button
+            onClick={handleResend}
+            disabled={countdown > 0 || loading}
+            className={`font-bold transition-colors ${countdown > 0 ? "text-gray-400 cursor-not-allowed" : "text-[#0055d4] hover:underline"
+              }`}
+          >
+            Gửi lại mã {countdown > 0 && `(${countdown}s)`}
+          </button>
         </div>
       </div>
-    </div>
+
+      <div className="mt-8 flex justify-center gap-6 text-[12px] font-bold text-gray-400">
+        <Link to="#" className="hover:text-gray-600 transition-colors">Trợ giúp</Link>
+        <span>•</span>
+        <Link to="#" className="hover:text-gray-600 transition-colors">Điều khoản bảo mật</Link>
+      </div>
+    </AuthLayout>
   );
 }

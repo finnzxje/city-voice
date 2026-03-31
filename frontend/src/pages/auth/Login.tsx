@@ -3,15 +3,8 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { AuthAPI } from "../../api/services";
 import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
-import {
-  Mail,
-  Lock,
-  ShieldCheck,
-  KeyRound,
-  ArrowRight,
-  Activity,
-  AlertCircle,
-} from "lucide-react";
+import { Mail, Lock, ShieldCheck, KeyRound, AlertCircle, Eye, EyeOff } from "lucide-react";
+import AuthLayout from "../../layouts/AuthLayout";
 
 type LoginMode = "citizen_pwd" | "citizen_otp" | "staff";
 
@@ -23,6 +16,8 @@ export default function Login() {
   const [mode, setMode] = useState<LoginMode>("citizen_pwd");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
 
@@ -53,16 +48,8 @@ export default function Login() {
 
   const handleVerifyOTP = async () => {
     const res = await AuthAPI.verifyOtpLogin({ email, otp });
-
-    await login(
-      {
-        accessToken: res.data.data.accessToken,
-        refreshToken: res.data.data.refreshToken,
-      },
-      res.data.data.user,
-    );
+    await login({ accessToken: res.data.data.accessToken, refreshToken: res.data.data.refreshToken }, res.data.data.user);
     toast.success("Đăng nhập thành công!");
-
     navigate("/");
   };
 
@@ -86,9 +73,8 @@ export default function Login() {
       }
     } catch (err: any) {
       if (err.response?.status === 403) {
-        // Account inactive, redirect to verify email
         toast.error("Tài khoản chưa kích hoạt, vui lòng kiểm tra email.");
-        navigate("/verify-email", { state: { email } });
+
       } else {
         const errorMessage = err.response?.data?.message || "Đăng nhập thất bại.";
         setError(errorMessage);
@@ -100,176 +86,222 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/50">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-100">
-            <button
-              onClick={() => {
-                setMode("citizen_pwd");
-                setOtpSent(false);
-                setError("");
-              }}
-              className={`flex-1 py-4 text-sm font-medium text-center transition-colors ${
-                mode.startsWith("citizen")
-                  ? "text-indigo-600 border-b-2 border-indigo-600 bg-white"
-                  : "text-gray-500 hover:text-gray-700 bg-gray-50/50"
+    <AuthLayout>
+      <div className="bg-white rounded-xl h-full overflow-hidden flex flex-col min-h-[580px]">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 shrink-0">
+          <button
+            onClick={() => {
+              setMode("citizen_pwd");
+              setOtpSent(false);
+              setError("");
+              setMsg("");
+            }}
+            className={`flex-1 py-4 text-[15px] font-semibold text-center transition-colors ${mode.startsWith("citizen")
+              ? "text-[#0055d4] border-b-2 border-[#0055d4] bg-white relative top-px"
+              : "text-gray-500 hover:text-gray-700 bg-gray-50"
               }`}
-            >
-              Cư dân
-            </button>
-            <button
-              onClick={() => {
-                setMode("staff");
-                setError("");
-              }}
-              className={`flex-1 py-4 text-sm font-medium text-center transition-colors ${
-                mode === "staff"
-                  ? "text-indigo-600 border-b-2 border-indigo-600 bg-white"
-                  : "text-gray-500 hover:text-gray-700 bg-gray-50/50"
+          >
+            Cư dân
+          </button>
+          <button
+            onClick={() => {
+              setMode("staff");
+              setError("");
+              setMsg("");
+            }}
+            className={`flex-1 py-4 text-[15px] font-semibold text-center transition-colors ${mode === "staff"
+              ? "text-[#0055d4] border-b-2 border-[#0055d4] bg-white relative top-px"
+              : "text-gray-500 hover:text-gray-700 bg-gray-50"
               }`}
-            >
-              Cán bộ
-            </button>
+          >
+            Cán bộ
+          </button>
+        </div>
+
+        <div className="p-8 flex-1 flex flex-col">
+          <div className="mb-6 shrink-0">
+            <h2 className="text-[28px] font-bold text-gray-900 tracking-tight mb-2">
+              {mode === "staff" ? "Cổng thông tin Nội bộ" : "Chào mừng trở lại"}
+            </h2>
+            <p className="text-[15px] text-gray-500 font-medium">
+              {mode === "staff" ? "Dành cho Nhân viên & Ban quản lý" : "Vui lòng đăng nhập để tiếp tục đóng góp cho cộng đồng."}
+            </p>
           </div>
 
-          <div className="p-8 sm:p-12">
-            <div className="text-center mb-8">
-              <div className="mx-auto h-16 w-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center transform rotate-3 shadow-lg mb-6">
-                <Activity size={32} className="transform -rotate-3" />
-              </div>
-              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Chào mừng trở lại
-              </h2>
-            </div>
-
-            {error && (
-              <div className="mb-6 bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 rounded-r-lg flex items-center">
-                <AlertCircle className="text-red-500 mr-3 shrink-0" size={20} />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
-            {msg && (
-              <div className="mb-6 bg-green-50/80 backdrop-blur-sm border-l-4 border-green-500 p-4 rounded-r-lg flex items-center">
-                <ShieldCheck
-                  className="text-green-500 mr-3 shrink-0"
-                  size={20}
-                />
-                <p className="text-sm text-green-700">{msg}</p>
-              </div>
-            )}
-
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={otpSent}
-                    className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl leading-5 bg-white/50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all duration-200 sm:text-sm disabled:opacity-50"
-                    placeholder="Địa chỉ Email"
-                  />
-                </div>
-
-                {/* Password field - show if Staff or Citizen Pwd */}
-                {(mode === "staff" || mode === "citizen_pwd") && (
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                    </div>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl leading-5 bg-white/50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all duration-200 sm:text-sm"
-                      placeholder="Mật khẩu"
-                    />
-                  </div>
-                )}
-
-                {/* OTP field - show if Citizen OTP and requested */}
-                {mode === "citizen_otp" && otpSent && (
-                  <div className="relative group mt-4 transform origin-top animate-fade-in-down">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <KeyRound className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl leading-5 bg-white/50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition-all duration-200 sm:text-sm tracking-widest"
-                      placeholder="Nhập mã OTP 6 số"
-                      maxLength={6}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Toggle Citizen Pwd / OTP */}
-              {mode.startsWith("citizen") && (
-                <div className="flex items-center justify-end">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode(
-                        mode === "citizen_pwd" ? "citizen_otp" : "citizen_pwd",
-                      );
-                      setOtpSent(false);
-                      setError("");
-                      setMsg("");
-                    }}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
-                  >
-                    {mode === "citizen_pwd"
-                      ? "Đăng nhập nhanh bằng OTP"
-                      : "Đăng nhập bằng mật khẩu"}
-                  </button>
-                </div>
-              )}
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {loading
-                    ? "Đang xử lý..."
-                    : mode === "citizen_otp" && !otpSent
-                      ? "Gửi mã OTP"
-                      : "Đăng nhập"}
-                  {!loading && (
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {mode.startsWith("citizen") && (
-            <div className="px-8 py-6 bg-gray-50/50 backdrop-blur-md border-t border-gray-100 text-center">
-              <p className="text-sm text-gray-600">
-                Chưa có tài khoản?{" "}
-                <Link
-                  to="/register"
-                  className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
-                >
-                  Đăng ký ngay
-                </Link>
-              </p>
+          {error && (
+            <div className="mb-6 bg-red-50/80 border-l-4 border-red-500 p-3 rounded-r-md flex items-center">
+              <AlertCircle className="text-red-500 mr-2 shrink-0" size={18} />
+              <p className="text-sm text-red-700 font-medium">{error}</p>
             </div>
           )}
+
+          {msg && (
+            <div className="mb-6 bg-green-50/80 border-l-4 border-green-500 p-3 rounded-r-md flex items-center">
+              <ShieldCheck className="text-green-500 mr-2 shrink-0" size={18} />
+              <p className="text-sm text-green-700 font-medium">{msg}</p>
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">
+                {mode === "staff" ? "Địa chỉ Email" : "Email"}
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Mail className="h-[18px] w-[18px] text-gray-400 group-focus-within:text-[#0055d4] transition-colors" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={otpSent}
+                  className="block w-full pl-10 pr-4 py-3 border-none bg-gray-100/80 rounded-[10px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0055d4] transition-all text-sm font-medium disabled:opacity-60"
+                  placeholder={mode === "staff" ? "name@cityvoice.vn" : "example@city.gov.vn"}
+                />
+              </div>
+            </div>
+
+            {/* Password field */}
+            {(mode === "staff" || mode === "citizen_pwd") && (
+              <div>
+                <div className="flex justify-between items-center mb-1.5 ml-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    Mật khẩu
+                  </label>
+                  {/* <Link to="#" className="text-xs font-bold text-[#0055d4] hover:underline">
+                    Quên mật khẩu?
+                  </Link> */}
+                </div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock className="h-[18px] w-[18px] text-gray-400 group-focus-within:text-[#0055d4] transition-colors" />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-3 border-none bg-gray-100/80 rounded-[10px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0055d4] transition-all text-sm font-medium tracking-wide"
+                    placeholder="••••••••"
+                  />
+                  <div
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* OTP field */}
+            {mode === "citizen_otp" && (
+              <>
+                {!otpSent ? null : (
+                  <div className="mt-4 animate-fade-in-down">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">
+                      Mã OTP
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <KeyRound className="h-[18px] w-[18px] text-gray-400 group-focus-within:text-[#0055d4] transition-colors" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        className="block w-full pl-10 pr-4 py-3 border-none bg-gray-100/80 rounded-[10px] text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0055d4] transition-all text-sm font-medium tracking-widest"
+                        placeholder="Nhập mã 6 số"
+                        maxLength={6}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex items-center pt-1 pb-2">
+              <input
+                id="remember_me"
+                type="checkbox"
+                className="h-4 w-4 text-[#0055d4] focus:ring-[#0055d4] border-gray-300 rounded cursor-pointer"
+              />
+              <label htmlFor="remember_me" className="ml-2 block text-[13px] font-medium text-gray-700 cursor-pointer">
+                Ghi nhớ đăng nhập
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3.5 px-4 rounded-[10px] text-sm font-bold text-white bg-[#0055d4] hover:bg-[#004bbd] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0055d4] transition-all shadow-[0_4px_12px_rgba(0,85,212,0.25)] disabled:opacity-70 disabled:cursor-not-allowed items-center"
+            >
+              {loading
+                ? "Đang xử lý..."
+                : (mode === "citizen_otp" && !otpSent)
+                  ? "Gửi mã OTP"
+                  : (mode === "staff" ? "Đăng nhập Hệ thống \u2192" : "Đăng nhập ngay")}
+            </button>
+
+            {mode.startsWith("citizen") && mode === "citizen_pwd" && (
+              <>
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-100"></div>
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="px-3 bg-white text-[11px] font-bold text-gray-400 uppercase tracking-widest">Hoặc</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("citizen_otp");
+                    setOtpSent(false);
+                    setError("");
+                  }}
+                  className="w-full flex justify-center py-3.5 px-4 rounded-[10px] text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-all items-center gap-2"
+                >
+                  <KeyRound size={16} className="text-gray-600" />
+                  Đăng nhập không mật khẩu (OTP)
+                </button>
+              </>
+            )}
+
+            {mode === "citizen_otp" && (
+              <div className="text-center mt-3">
+                <button type="button" onClick={() => setMode("citizen_pwd")} className="text-[13px] font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+                  Quay lại đăng nhập mật khẩu
+                </button>
+              </div>
+            )}
+          </form>
+
+          <div className="mt-auto pt-6 px-1">
+            {mode.startsWith("citizen") ? (
+              <div className="text-center text-[13px] text-gray-600 font-medium">
+                Bạn chưa có tài khoản?{" "}
+                <Link to="/register" className="font-bold text-[#0055d4] hover:underline">
+                  Tạo tài khoản mới
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center">
+                <button onClick={() => setMode("citizen_pwd")} className="text-[14px] font-bold text-gray-600 hover:text-gray-900 transition-colors flex items-center justify-center gap-2 mx-auto">
+                  &larr; Quay lại Trang chủ
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+
+    </AuthLayout>
   );
 }
