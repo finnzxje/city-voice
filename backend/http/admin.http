@@ -156,13 +156,25 @@ Content-Type: application/json
 
 ###
 
-### 2e. Verify disabled category is excluded from public list
+### 2e. List ALL categories including disabled ones (Admin only)
+# Expect: ALL categories returned including inactive ones.
+GET {{baseUrl}}/categories/all
+Authorization: Bearer {{adminToken}}
+
+###
+
+### 2f. Verify disabled category is excluded from public list
 # Expect: the disabled category is NOT in the result.
 GET {{baseUrl}}/categories
 
 ###
 
-### 2f. Create category without token – expect 403
+### 2g. List all categories without token – expect 403
+GET {{baseUrl}}/categories/all
+
+###
+
+### 2h. Create category without token – expect 403
 POST {{baseUrl}}/categories
 Content-Type: application/json
 
@@ -174,7 +186,7 @@ Content-Type: application/json
 
 ###
 
-### 2g. Update non-existent category – expect 404
+### 2i. Update non-existent category – expect 404
 PUT {{baseUrl}}/categories/9999
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json

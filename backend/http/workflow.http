@@ -168,6 +168,16 @@ Content-Type: application/json
   client.test("Status 400", () => client.assert(response.status === 400));
 %}
 
+###
+
+### 3d. Non-assigned staff tries to RESOLVE report → Expect: 403
+# After 4a assigns the report to the staff user, the admin is NOT the assignee.
+# curl -s -X POST http://localhost:8080/api/reports/{{reportId}}/resolve \
+#   -H "Authorization: Bearer $ADMIN_TOKEN" \
+#   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" | python3 -m json.tool
+# Expect: 403 "Chỉ nhân viên được giao mới có thể thực hiện thao tác này."
+# NOTE: This case only applies before section 4a runs — once admin reviews and self-assigns, they can resolve.
+
 
 # ─── 4. VALID TRANSITIONS ────────────────────────────────────────────────────
 
@@ -208,8 +218,9 @@ Content-Type: application/json
 ###
 
 ### 4c. RESOLVE: in_progress → resolved (upload proof image via curl)
+# ⚠ Must use the token of the ASSIGNED staff member. Admins are exempt.
 # curl -s -X POST http://localhost:8080/api/reports/{{reportId}}/resolve \
-#   -H "Authorization: Bearer $ADMIN_TOKEN" \
+#   -H "Authorization: Bearer $STAFF_TOKEN" \
 #   -F "image=@./backend/http/test_image.jpg;type=image/jpeg" \
 #   -F "note=Pothole repaired and resurfaced" | python3 -m json.tool
 # Expect: 200, currentStatus=resolved, resolutionImageUrl set

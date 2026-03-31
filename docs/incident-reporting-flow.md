@@ -143,12 +143,14 @@ Staff, managers, and admins manage the lifecycle of reports through a strictly e
 ```
 newly_received ──► in_progress  (staff reviews & accepts)
 newly_received ──► rejected     (staff rejects as inauthentic)
-in_progress    ──► resolved     (staff uploads proof image)
+in_progress    ──► resolved     (assigned staff uploads proof image)
 ```
 
 No step-skipping is allowed. Any invalid transition returns `400 Bad Request`.
 
----
+> [!IMPORTANT]
+> **Ownership rule:** Once a report is `in_progress`, only the **staff member it was assigned to** can resolve it. Any other staff attempting to resolve will receive `403 Forbidden`. Admins are always exempt and can resolve any report.
+
 
 ### 4a. List All Reports (Staff/Manager/Admin)
 

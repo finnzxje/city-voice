@@ -26,6 +26,14 @@ public class CategoryService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> listAllCategories() {
+        return categoryRepository.findAll()
+                .stream()
+                .map(CategoryResponse::fromEntity)
+                .toList();
+    }
+
     @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
         if (categoryRepository.existsBySlug(request.getSlug())) {
