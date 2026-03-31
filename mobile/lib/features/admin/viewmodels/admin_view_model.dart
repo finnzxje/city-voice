@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_exception.dart';
+import '../models/admin_category.dart';
+import '../models/upsert_category_request.dart';
 import '../models/user_manifest.dart';
 import '../services/admin_service.dart';
 
@@ -25,6 +27,15 @@ class AdminViewModel extends ChangeNotifier {
   ViewState _usersState = ViewState.idle;
 
   ViewState get usersState => _usersState;
+
+  // ── Category state ─────────────────────────────────────────────────────────
+  List<AdminCategory> _categories = [];
+
+  List<AdminCategory> get categories => _categories;
+
+  ViewState _categoriesState = ViewState.idle;
+
+  ViewState get categoriesState => _categoriesState;
 
   // ── Shared action state ────────────────────────────────────────────────────
   ViewState _actionState = ViewState.idle;
@@ -92,6 +103,100 @@ class AdminViewModel extends ChangeNotifier {
     }
   }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CATEGORY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+
+  /// Loads all categories (including inactive).
+  Future<void> loadCategories() async {
+    _categoriesState = ViewState.loading;
+    _categoriesError = null;
+    notifyListeners();
+
+    try {
+      final fetchedCategories = await _adminService.getAllCategories();
+      _categories = _mergeVisibleCategories(fetchedCategories);
+      _categoriesState = ViewState.success;
+    } catch (e) {
+      _categoriesError = _extractError(e);
+      _categoriesState = ViewState.error;
+    }
+    notifyListeners();
+  }
+
+  Future<bool> createCategory(UpsertCategoryRequest req) async {
+    _actionState = ViewState.loading;
+    _actionError = null;
+    notifyListeners();
+
+    try {
+      final created = await _adminService.createCategory(req);
+      _categories = _mergeVisibleCategories([created, ..._categories]);
+      _actionState = ViewState.success;
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        _actionError = 'Slug này đã tồn tại';
+      } else {
+        _actionError = _extractError(e);
+      }
+      _actionState = ViewState.error;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _actionError = _extractError(e);
+      _actionState = ViewState.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateCategory(int id, UpsertCategoryRequest req) async {
+    _actionState = ViewState.loading;
+    _actionError = null;
+    notifyListeners();
+
+    try {
+      final updated = await _adminService.updateCategory(id, req);
+      final idx = _categories.indexWhere((c) => c.id == id);
+      if (idx >= 0) {
+        _categories = _mergeVisibleCategories(
+          List<AdminCategory>.from(_categories)..[idx] = updated,
+        );
+      } else {
+        _categories = _mergeVisibleCategories([updated, ..._categories]);
+      }
+      _actionState = ViewState.success;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _actionError = _extractError(e);
+      _actionState = ViewState.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Convenience: toggles a category's active flag.
+  Future<bool> toggleCategoryActive(AdminCategory cat) {
+    return updateCategory(
+      cat.id,
+      UpsertCategoryRequest(
+        name: cat.name,
+        slug: cat.slug,
+        iconKey: cat.iconKey,
+        active: !cat.active,
+      ),
+    );
+  }
+
+  /// Clears the action error (e.g. when retrying).
+  void clearActionError() {
+    _actionError = null;
+    notifyListeners();
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   List<UserManifest> _sortUsers(List<UserManifest> users) {
@@ -108,6 +213,23 @@ class AdminViewModel extends ChangeNotifier {
       return a.email.toLowerCase().compareTo(b.email.toLowerCase());
     });
     return sorted;
+  }
+
+  List<AdminCategory> _mergeVisibleCategories(List<AdminCategory> incoming) {
+    final mergedById = <int, AdminCategory>{
+      for (final category in _categories.where((item) => !item.active))
+        category.id: category,
+      for (final category in incoming) category.id: category,
+    };
+
+    final merged = mergedById.values.toList();
+    merged.sort((a, b) {
+      if (a.active != b.active) {
+        return a.active ? -1 : 1;
+      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return merged;
   }
 
   String _extractError(Object e) {
