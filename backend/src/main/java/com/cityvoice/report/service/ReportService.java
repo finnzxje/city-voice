@@ -219,6 +219,7 @@ public class ReportService {
                 Report report = loadReport(reportId);
                 assertStatus(report, ReportStatus.in_progress,
                                 "Chỉ có thể hoàn thành báo cáo đang ở trạng thái 'Đang xử lý'.");
+                assertAssignedTo(report, staff);
 
                 String proofUrl = storageService.store(proofImage, "resolutions");
                 report.setResolutionImageUrl(proofUrl);
@@ -247,6 +248,19 @@ public class ReportService {
         private void assertStatus(Report report, ReportStatus expected, String message) {
                 if (report.getCurrentStatus() != expected) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+                }
+        }
+
+        /**
+         * Throws 403 if the acting staff is not the assigned staff member.
+         * Admins are always exempt.
+         */
+        private void assertAssignedTo(Report report, User actor) {
+                if (actor.getRole() == UserRole.admin) return;
+                User assignee = report.getAssignedTo();
+                if (assignee == null || !assignee.getId().equals(actor.getId())) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                        "Chỉ nhân viên được giao mới có thể thực hiện thao tác này.");
                 }
         }
 
