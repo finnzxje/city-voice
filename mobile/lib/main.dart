@@ -10,6 +10,8 @@ import 'core/routes/app_router.dart';
 import 'core/storage/secure_storage_helper.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/auth/viewmodels/auth_view_model.dart';
+import 'features/admin/services/admin_service.dart';
+import 'features/admin/viewmodels/admin_view_model.dart';
 import 'features/notifications/services/notification_service.dart';
 import 'features/notifications/viewmodels/notification_view_model.dart';
 import 'features/reports/services/category_service.dart';
@@ -49,6 +51,7 @@ Future<void> main() async {
   final categoryService = CategoryService(dio: dio);
   final notificationService = NotificationService(dio: dio);
   final staffReportService = StaffReportService(dio: dio);
+  final adminService = AdminService(dio: dio);
   final authViewModel = AuthViewModel(
     authService: authService,
     storage: storage,
@@ -93,7 +96,14 @@ Future<void> main() async {
         ChangeNotifierProvider<NotificationViewModel>(
           create: (_) => NotificationViewModel(
             notificationService: notificationService,
+            navigatorKey: appRouter.navigatorKey,
           ),
+        ),
+
+        // Admin
+        Provider<AdminService>.value(value: adminService),
+        ChangeNotifierProvider<AdminViewModel>(
+          create: (_) => AdminViewModel(adminService: adminService),
         ),
       ],
       child: const CityVoiceApp(),

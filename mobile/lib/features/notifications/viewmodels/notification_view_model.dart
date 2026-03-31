@@ -8,8 +8,13 @@ import '../services/notification_service.dart';
 class NotificationViewModel extends ChangeNotifier {
   final NotificationService _notificationService;
 
+  /// Global navigator key for showing in-app push notifications
+  /// from anywhere in the app (set from main.dart).
+  final GlobalKey<NavigatorState>? navigatorKey;
+
   NotificationViewModel({
     required NotificationService notificationService,
+    this.navigatorKey,
   }) : _notificationService = notificationService;
 
   // ── Observable state ───────────────────────────────────────────────────────
