@@ -27,6 +27,12 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.success(categoryService.listActiveCategories()));
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<CategoryResponse>>> listAllCategories() {
+        return ResponseEntity.ok(ApiResponse.success(categoryService.listAllCategories()));
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(

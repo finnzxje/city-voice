@@ -58,9 +58,11 @@ Admins can elevate citizens to staff members or demote managers.
 
 ### 3b. Category Management
 Instead of a hardcoded enum, incident categories (e.g., "Pothole", "Fallen Tree") are dynamically driven by the `categories` database table. The public endpoint `GET /api/categories` only lists active categories.
+* `GET /api/categories`: *(Public)* Returns only active categories. Used by citizens when submitting reports.
+* `GET /api/categories/all`: *(Admin only)* Returns **all** categories regardless of active status. Allows admins to discover and re-enable previously deactivated categories.
 * `POST /api/categories`: Creates a new category. Validates that the unique `slug` string is not duplicated (returns `409 Conflict` if it is).
 * `PUT /api/categories/{id}`: Updates name, icon, slug, or the `active` boolean status.
-* *Soft Deletion:* Setting `"active": false` on a category immediately removes it from the citizen-facing incident reporting form without breaking historical analytical data.
+* *Soft Deletion:* Setting `"active": false` on a category immediately removes it from the citizen-facing incident reporting form without breaking historical analytical data. To re-enable, an admin calls `GET /api/categories/all` to find the category ID, then calls `PUT /api/categories/{id}` with `"active": true`.
 
 ---
 
