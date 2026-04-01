@@ -53,10 +53,10 @@ class AppColors {
   static const Color statusRejectedBg = Color(0xFFFFEBEE);
 
   // ── Priority Colours ───────────────────────────────────────────────────────
-  static const Color priorityLow = Color(0xFF78909C);
-  static const Color priorityMedium = Color(0xFFFFA726);
-  static const Color priorityHigh = Color(0xFFEF5350);
-  static const Color priorityCritical = Color(0xFFD32F2F);
+  static const Color priorityLow = Color(0xFF94A3B8); // Grey
+  static const Color priorityMedium = Color(0xFFD97706); // Amber
+  static const Color priorityHigh = Color(0xFFEA580C); // Orange
+  static const Color priorityCritical = Color(0xFFDC2626); // Red
 
   // ── Utility ────────────────────────────────────────────────────────────────
   static const Color success = Color(0xFF43A047);
