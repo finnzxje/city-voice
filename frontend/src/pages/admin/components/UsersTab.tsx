@@ -164,7 +164,7 @@ export default function UsersTab() {
                 <th className="px-6 py-5">Liên hệ</th>
                 <th className="px-6 py-5">Phân quyền</th>
                 <th className="px-6 py-5 text-center">Trạng thái</th>
-                <th className="px-8 py-5 text-right">Hành động</th>
+                <th className="px-8 py-5 text-center">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-low">
@@ -197,13 +197,13 @@ export default function UsersTab() {
                     <td className="px-6 py-4">
                       <span
                         className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
-                        ${u.role === "admin"
-                            ? "bg-error-container text-on-error-container"
+                          ${u.role === "admin"
+                            ? "bg-indigo-600 text-white shadow-sm"
                             : u.role === "manager"
-                              ? "bg-secondary-container/30 text-secondary"
+                              ? "bg-amber-100 text-amber-700"
                               : u.role === "staff"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-surface-container-high text-on-surface-variant"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-slate-100 text-slate-500"
                           }
                       `}
                       >
@@ -232,7 +232,7 @@ export default function UsersTab() {
                           onClick={() => setOpenDropdownId(openDropdownId === u.id ? null : u.id)}
                           className="text-primary hover:bg-primary/5 px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ml-auto outline-none"
                         >
-                          Change Role
+                          Thay đổi vai trò
                           <ChevronDown className="h-4 w-4" />
                         </button>
                         {/* Dropdown Menu */}

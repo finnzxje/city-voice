@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, FolderTree, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, FolderTree, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface CategoryForm {
@@ -14,11 +14,13 @@ interface AddCategoryModalProps {
   setForm: (form: CategoryForm) => void;
   onSave: (isActive: boolean) => void;
   isEditing: boolean;
+  isActive: boolean | null;
 }
 
 const COMMON_ICONS = ["Cone", "Zap", "CloudRain", "AlertTriangle", "Trash2", "TreeDeciduous", "Wrench", "CircleHelp"];
 
 export default function AddCategoryModal({
+  isActive,
   isOpen,
   onClose,
   form,
@@ -143,16 +145,26 @@ export default function AddCategoryModal({
             >
               {isEditing ? "Cập nhật thay đổi" : "Tạo danh mục"}
             </button>
-
             {isEditing && (
-              <button
-                type="button"
-                onClick={() => setShowConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-error hover:bg-error/5 font-bold text-sm transition-all border border-transparent hover:border-error/20"
-              >
-                <Trash2 className="h-4 w-4" />
-                Vô hiệu hóa danh mục này
-              </button>
+              isActive ? (
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-error hover:bg-error/5 font-bold text-sm transition-all border border-transparent hover:border-error/20"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Vô hiệu hóa danh mục này
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSave(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-success hover:bg-success/5 font-bold text-sm transition-all border border-transparent hover:border-success/20"
+                >
+                  <Check className="h-4 w-4" />
+                  Kích hoạt danh mục này
+                </button>
+              )
             )}
           </div>
           {isEditing && (

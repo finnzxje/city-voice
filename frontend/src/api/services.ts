@@ -142,6 +142,7 @@ export const AdminAPI = {
   createCategory: (data: { name: string; slug: string; iconKey: string; active?: boolean }) =>
     apiClient.post("/categories", data),
   updateCategory: (id: number, data: Partial<{ name: string; slug: string; iconKey: string; active: boolean }>) =>
-    apiClient.put(`/categories/${id}`, data)
+    apiClient.put(`/categories/${id}`, data),
+  getAllCategory: () => apiClient.get<ApiResponse<Category[]>>("/categories/all"),
 };
 

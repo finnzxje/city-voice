@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { AdminAPI, IncidentAPI, type Category } from "../../../api/services";
-import { FolderTree, Search, Plus, Edit2, AlertCircle } from "lucide-react";
+import { AdminAPI, type Category } from "../../../api/services";
+import { FolderTree, Search, Plus, Edit2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import toast from "react-hot-toast";
 import AddCategoryModal from "./AddCategoryModal";
@@ -43,7 +43,8 @@ export default function CategoriesTab() {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const res = await IncidentAPI.getCategories();
+      const res = await AdminAPI.getAllCategory();
+      console.log(res.data.data);
       if (res.data?.data) setCategories(res.data.data);
     } catch (err) {
       toast.error("Không thể tải danh mục.");
@@ -89,9 +90,17 @@ export default function CategoriesTab() {
       toast.error(errorMsg, { id: toastId });
     }
   };
-  const displayCategories = categories.filter((c) =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+
+  const displayCategories = categories
+    .filter((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      const aActive = a.active !== false;
+      const bActive = b.active !== false;
+      if (aActive === bActive) {
+        return a.name.localeCompare(b.name);
+      }
+      return aActive ? -1 : 1;
+    });
 
   return (
     <div className="space-y-10 animate-fade-in-up">
@@ -159,19 +168,19 @@ export default function CategoriesTab() {
             ) : (
               displayCategories.map((cat, idx) => {
                 const { Icon, palette } = getCategoryVisual(cat.iconKey, idx);
-                const isActive = cat.active !== false;
+                const isCatActive = cat.active !== false;
 
                 return (
                   <div
                     key={cat.id}
                     className={`group bg-surface-container-lowest p-5 rounded-2xl flex items-center justify-between transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-surface-container border hover:border-primary/20
-                      ${!isActive ? "opacity-60 grayscale bg-surface-container" : "border-transparent"}
+                      ${!isCatActive ? "opacity-60 grayscale bg-surface-container" : "border-transparent"}
                     `}
                   >
                     <div className="flex items-center gap-5">
                       <div
                         className={`w-14 h-14 rounded-2xl flex items-center justify-center 
-                          ${isActive ? palette.bg + " " + palette.icon : "bg-surface-container-high text-on-surface-variant"}
+                          ${isCatActive ? palette.bg + " " + palette.icon : "bg-surface-container-high text-on-surface-variant"}
                         `}
                       >
                         <Icon className="h-7 w-7" />
@@ -190,8 +199,8 @@ export default function CategoriesTab() {
                         <p className="text-[10px] font-black uppercase tracking-tighter text-outline-variant mb-0.5">
                           Trạng thái
                         </p>
-                        <p className={`text-sm font-bold ${isActive ? "text-[#168a3e]" : "text-on-surface-variant"}`}>
-                          {isActive ? "Hoạt động" : "Không hoạt động"}
+                        <p className={`text-sm font-bold ${isCatActive ? "text-[#168a3e]" : "text-on-surface-variant"}`}>
+                          {isCatActive ? "Hoạt động" : "Không hoạt động"}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -233,21 +242,10 @@ export default function CategoriesTab() {
               Tạo danh mục mới
             </button>
           </div>
-
-          <div className="p-6 rounded-3xl bg-secondary-container/10 border border-secondary/20">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-secondary mt-0.5" />
-              <div>
-                <h4 className="text-sm font-bold text-on-secondary-container mb-1">Audit Log</h4>
-                <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-                  Thay đổi siêu dữ liệu danh mục được ghi lại với dấu thời gian để theo dõi tuân thủ.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <AddCategoryModal
+        isActive={editingCategory ? editingCategory.active !== false : true}
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
         form={categoryForm}
