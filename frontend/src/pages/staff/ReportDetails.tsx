@@ -382,41 +382,50 @@ export default function StaffReportDetails() {
                   <CheckSquare className="h-5 w-5" />
                   Nghiệm thu (Resolve)
                 </h3>
-                <p className="text-xs text-[#00174c] mb-2 font-medium relative z-10">Vui lòng tải lên hình ảnh sau khi đã hoàn thành việc sửa chữa hiện trường.</p>
+                
+                {user && (user.id === report.assignedToId || user.role === 'admin') ? (
+                  <>
+                    <p className="text-xs text-[#00174c] mb-2 font-medium relative z-10">Vui lòng tải lên hình ảnh sau khi đã hoàn thành việc sửa chữa hiện trường.</p>
 
-                <div className="relative z-10 space-y-3">
-                  <label className="flex flex-col cursor-pointer group">
-                    <div className="border-2 border-dashed border-[#b4c5ff] hover:border-primary transition-colors bg-white/70 rounded-xl p-8 flex flex-col items-center justify-center gap-2">
-                      <ImageIcon className="text-on-primary-fixed-variant group-hover:text-primary transition-colors h-8 w-8" />
-                      <span className="text-xs font-bold text-on-primary-fixed-variant group-hover:text-primary mt-1 text-center">
-                        {resolveImage ? resolveImage.name : "Kéo thả hoặc Click để tải ảnh (*)"}
-                      </span>
+                    <div className="relative z-10 space-y-3">
+                      <label className="flex flex-col cursor-pointer group">
+                        <div className="border-2 border-dashed border-[#b4c5ff] hover:border-primary transition-colors bg-white/70 rounded-xl p-8 flex flex-col items-center justify-center gap-2">
+                          <ImageIcon className="text-on-primary-fixed-variant group-hover:text-primary transition-colors h-8 w-8" />
+                          <span className="text-xs font-bold text-on-primary-fixed-variant group-hover:text-primary mt-1 text-center">
+                            {resolveImage ? resolveImage.name : "Kéo thả hoặc Click để tải ảnh (*)"}
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files && setResolveImage(e.target.files[0])}
+                        />
+                      </label>
+
+                      <textarea
+                        value={resolveNote}
+                        onChange={(e) => setResolveNote(e.target.value)}
+                        placeholder="Ghi chú hoàn thành (tùy chọn)..."
+                        className="w-full bg-white border-none rounded-xl text-sm p-4 outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
+                        rows={2}
+                      ></textarea>
+
+                      <button
+                        onClick={handleResolve}
+                        disabled={actionLoading || !resolveImage}
+                        className="w-full py-4 bg-white text-primary border-2 border-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2 shadow-sm"
+                      >
+                        <CheckCircle2 className="h-5 w-5" />
+                        Hoàn thành & Đóng hồ sơ
+                      </button>
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => e.target.files && setResolveImage(e.target.files[0])}
-                    />
-                  </label>
-
-                  <textarea
-                    value={resolveNote}
-                    onChange={(e) => setResolveNote(e.target.value)}
-                    placeholder="Ghi chú hoàn thành (tùy chọn)..."
-                    className="w-full bg-white border-none rounded-xl text-sm p-4 outline-none focus:ring-2 focus:ring-primary/40 shadow-sm"
-                    rows={2}
-                  ></textarea>
-
-                  <button
-                    onClick={handleResolve}
-                    disabled={actionLoading || !resolveImage}
-                    className="w-full py-4 bg-white text-primary border-2 border-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2 shadow-sm"
-                  >
-                    <CheckCircle2 className="h-5 w-5" />
-                    Hoàn thành & Đóng hồ sơ
-                  </button>
-                </div>
+                  </>
+                ) : (
+                  <div className="relative z-10 p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm font-medium border border-yellow-200">
+                    Báo cáo này đang được xử lý bởi nhân viên <b>{report.assignedToName || 'khác'}</b>. Chỉ người được phân công hoặc Quản trị viên (Admin) mới có quyền hoàn tất báo cáo này.
+                  </div>
+                )}
               </section>
             )}
 

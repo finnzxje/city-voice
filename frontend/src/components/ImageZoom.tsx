@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const ImageZoom = ({ src }: { src: string }) => {
     const [isMaximized, setIsMaximized] = useState(false);
@@ -24,7 +24,7 @@ const ImageZoom = ({ src }: { src: string }) => {
             {/* Lớp phủ phóng to toàn màn hình */}
             {isMaximized && (
                 <div
-                    className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-zoom-out p-4"
+                    className="fixed inset-0 z-999 flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-zoom-out p-4"
                     onClick={() => setIsMaximized(false)}
                 >
                     <img
