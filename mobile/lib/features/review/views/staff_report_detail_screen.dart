@@ -1,12 +1,14 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/utils.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
@@ -432,6 +434,13 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
 
   Widget _buildActionBar(Report report) {
     final status = report.currentStatus;
+    final authVm = context.read<AuthViewModel>();
+    final currentUserId = authVm.user?.id;
+    final currentUserRole = authVm.user?.role;
+    final canResolve = currentUserRole == 'admin' ||
+        (currentUserId != null &&
+            report.assignedToId != null &&
+            report.assignedToId == currentUserId);
 
     if (status == 'resolved') {
       return _buildStatusBanner(
@@ -481,12 +490,63 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
 
     if (status == 'in_progress') {
       return _buildActionContainer(
-        child: _ActionButton(
-          label: 'Xác nhận hoàn thành',
-          icon: Icons.task_alt_outlined,
-          color: AppColors.success,
-          onTap: () => _showResolveSheet(report),
-          isFullWidth: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!canResolve) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: AppColors.warning,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Chỉ nhân viên được giao mới có thể xác nhận hoàn thành báo cáo này.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.warning,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            _ActionButton(
+              label: 'Xác nhận hoàn thành',
+              icon: Icons.task_alt_outlined,
+              color: AppColors.success,
+              onTap: canResolve
+                  ? () => _showResolveSheet(report)
+                  : () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Chỉ nhân viên được giao mới có thể thực hiện thao tác này.',
+                          ),
+                          backgroundColor: AppColors.warning,
+                        ),
+                      );
+                    },
+              isFullWidth: true,
+            ),
+          ],
         ),
       );
     }
@@ -594,9 +654,8 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF475569))),
                   const SizedBox(height: 8),
-                  // ignore: deprecated_member_use
                   DropdownButtonFormField<String>(
-                    value: selectedPriority,
+                    initialValue: selectedPriority,
                     isExpanded: true,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(

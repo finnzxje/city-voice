@@ -1,11 +1,14 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../../core/network/api_exception.dart';
 import '../../reports/models/incident_category.dart';
 import '../../reports/models/report.dart';
 import '../../reports/services/category_service.dart';
-import '../models/review_request.dart';
 import '../models/reject_request.dart';
+import '../models/review_request.dart';
 import '../services/staff_report_service.dart';
 
 class StaffWorkflowViewModel extends ChangeNotifier {
@@ -265,6 +268,9 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _replaceReport(updated);
       _selectedReport = updated;
       return true;
+    } on ReportAssignmentException catch (e) {
+      _actionError = e.message;
+      return false;
     } on DioException catch (e) {
       _actionError = _extractError(e);
       return false;
@@ -288,6 +294,9 @@ class StaffWorkflowViewModel extends ChangeNotifier {
   }
 
   String _extractError(DioException e) {
+    if (e.error is ApiException) {
+      return (e.error as ApiException).message;
+    }
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
       return data['message'] as String? ?? 'Đã xảy ra lỗi';

@@ -48,3 +48,14 @@ class ServerException extends ApiException {
           message: message ?? 'Máy chủ không phản hồi. Vui lòng thử lại sau.',
         );
 }
+
+/// Thrown when a staff action is denied because the report is assigned
+/// to someone else.
+class ReportAssignmentException extends ApiException {
+  const ReportAssignmentException({
+    super.message =
+        'Chỉ nhân viên được giao mới có thể thực hiện thao tác này.',
+  }) : super(
+          code: 403,
+        );
+}

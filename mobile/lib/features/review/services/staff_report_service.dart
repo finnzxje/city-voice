@@ -1,10 +1,13 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_constants.dart';
+import '../../../core/network/api_exception.dart';
 import '../../../core/network/api_response.dart';
 import '../../reports/models/report.dart';
-import '../models/review_request.dart';
 import '../models/reject_request.dart';
+import '../models/review_request.dart';
 
 /// Paginated result wrapper.
 class PaginatedResult {
@@ -149,10 +152,21 @@ class StaffReportService {
       if (note != null && note.isNotEmpty) 'note': note,
     });
 
-    final response = await _dio.post(
-      ApiConstants.resolveReport(reportId),
-      data: formData,
-    );
+    Response response;
+    try {
+      response = await _dio.post(
+        ApiConstants.resolveReport(reportId),
+        data: formData,
+      );
+    } on DioException catch (e) {
+      final apiError = e.error;
+      if (apiError is ApiException &&
+          apiError.code == 403 &&
+          apiError.message.contains('được giao')) {
+        throw ReportAssignmentException(message: apiError.message);
+      }
+      rethrow;
+    }
 
     final data = response.data;
     if (data is Map<String, dynamic>) {
