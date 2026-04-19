@@ -4,14 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
 import 'app.dart';
 import 'core/network/dio_client.dart';
 import 'core/routes/app_router.dart';
 import 'core/storage/secure_storage_helper.dart';
-import 'features/auth/services/auth_service.dart';
-import 'features/auth/viewmodels/auth_view_model.dart';
 import 'features/admin/services/admin_service.dart';
 import 'features/admin/viewmodels/admin_view_model.dart';
+import 'features/analytics/services/analytics_service.dart';
+import 'features/analytics/viewmodels/analytics_view_model.dart';
+import 'features/auth/services/auth_service.dart';
+import 'features/auth/viewmodels/auth_view_model.dart';
 import 'features/notifications/services/notification_service.dart';
 import 'features/notifications/viewmodels/notification_view_model.dart';
 import 'features/reports/services/category_service.dart';
@@ -52,6 +55,7 @@ Future<void> main() async {
   final notificationService = NotificationService(dio: dio);
   final staffReportService = StaffReportService(dio: dio);
   final adminService = AdminService(dio: dio);
+  final analyticsService = AnalyticsService(dio: dio);
   final authViewModel = AuthViewModel(
     authService: authService,
     storage: storage,
@@ -104,6 +108,12 @@ Future<void> main() async {
         Provider<AdminService>.value(value: adminService),
         ChangeNotifierProvider<AdminViewModel>(
           create: (_) => AdminViewModel(adminService: adminService),
+        ),
+
+        // Analytics
+        Provider<AnalyticsService>.value(value: analyticsService),
+        ChangeNotifierProvider<AnalyticsViewModel>(
+          create: (_) => AnalyticsViewModel(service: analyticsService),
         ),
       ],
       child: const CityVoiceApp(),
