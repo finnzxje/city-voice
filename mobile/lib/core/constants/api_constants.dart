@@ -11,7 +11,7 @@ library;
 class ApiConstants {
   ApiConstants._(); // prevent instantiation
 
-  static const String localhost = 'http://192.168.1.26';
+  static const String localhost = 'http://10.251.7.161';
 
   // ── Base URL ───────────────────────────────────────────────────────────────
   /// Default base URL for the CityVoice Spring Boot backend.
@@ -51,7 +51,8 @@ class ApiConstants {
   static String resolveReport(String id) => '/reports/$id/resolve';
 
   // ── Category endpoints ─────────────────────────────────────────────────────
-  static const String categories = '/categories';
+  static const String categories = '/categories'; // just active category
+  static const String allCategories = '/categories/all'; // for admin
 
   // ── Notification endpoints ─────────────────────────────────────────────────
   static const String notifications = '/notifications';

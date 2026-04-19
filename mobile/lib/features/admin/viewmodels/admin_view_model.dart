@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
 import '../../../core/network/api_exception.dart';
 import '../models/admin_category.dart';
 import '../models/upsert_category_request.dart';
@@ -115,7 +116,7 @@ class AdminViewModel extends ChangeNotifier {
 
     try {
       final fetchedCategories = await _adminService.getAllCategories();
-      _categories = _mergeVisibleCategories(fetchedCategories);
+      _categories = _sortCategories(fetchedCategories);
       _categoriesState = ViewState.success;
     } catch (e) {
       _categoriesError = _extractError(e);
@@ -131,7 +132,7 @@ class AdminViewModel extends ChangeNotifier {
 
     try {
       final created = await _adminService.createCategory(req);
-      _categories = _mergeVisibleCategories([created, ..._categories]);
+      _categories = _sortCategories([created, ..._categories]);
       _actionState = ViewState.success;
       notifyListeners();
       return true;
@@ -161,11 +162,11 @@ class AdminViewModel extends ChangeNotifier {
       final updated = await _adminService.updateCategory(id, req);
       final idx = _categories.indexWhere((c) => c.id == id);
       if (idx >= 0) {
-        _categories = _mergeVisibleCategories(
+        _categories = _sortCategories(
           List<AdminCategory>.from(_categories)..[idx] = updated,
         );
       } else {
-        _categories = _mergeVisibleCategories([updated, ..._categories]);
+        _categories = _sortCategories([updated, ..._categories]);
       }
       _actionState = ViewState.success;
       notifyListeners();
@@ -215,21 +216,15 @@ class AdminViewModel extends ChangeNotifier {
     return sorted;
   }
 
-  List<AdminCategory> _mergeVisibleCategories(List<AdminCategory> incoming) {
-    final mergedById = <int, AdminCategory>{
-      for (final category in _categories.where((item) => !item.active))
-        category.id: category,
-      for (final category in incoming) category.id: category,
-    };
-
-    final merged = mergedById.values.toList();
-    merged.sort((a, b) {
+  List<AdminCategory> _sortCategories(List<AdminCategory> categories) {
+    final sorted = List<AdminCategory>.from(categories);
+    sorted.sort((a, b) {
       if (a.active != b.active) {
         return a.active ? -1 : 1;
       }
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
-    return merged;
+    return sorted;
   }
 
   String _extractError(Object e) {

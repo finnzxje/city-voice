@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_response.dart';
 import '../models/admin_category.dart';
@@ -65,7 +66,7 @@ class AdminService {
   // ── Category Management ────────────────────────────────────────────────────
 
   Future<List<AdminCategory>> getAllCategories() async {
-    final response = await _dio.get(ApiConstants.categories);
+    final response = await _dio.get(ApiConstants.allCategories);
     final data = response.data;
 
     if (data is Map<String, dynamic>) {
