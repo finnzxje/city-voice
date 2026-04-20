@@ -81,12 +81,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Section 1: Filter chips
-                  if (vm.activeFilter.hasActiveFilters) ...[
-                    _FilterChipsRow(vm: vm),
-                    const SizedBox(height: 16),
-                  ],
-
                   // Section 2: Scorecards
                   _ScorecardsRow(vm: vm),
                   const SizedBox(height: 20),
@@ -129,71 +123,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           categoryService: context.read<CategoryService>(),
         ),
       ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SECTION 1: Filter Chips
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _FilterChipsRow extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const _FilterChipsRow({required this.vm});
-
-  @override
-  Widget build(BuildContext context) {
-    final filter = vm.activeFilter;
-    final chips = <Widget>[];
-
-    if (filter.from != null) {
-      chips.add(_buildChip('Từ: ${filter.from}', () {
-        vm.applyFilter(filter.copyWith(from: () => null));
-      }));
-    }
-    if (filter.to != null) {
-      chips.add(_buildChip('Đến: ${filter.to}', () {
-        vm.applyFilter(filter.copyWith(to: () => null));
-      }));
-    }
-    if (filter.categoryId != null) {
-      chips.add(_buildChip('Danh mục: #${filter.categoryId}', () {
-        vm.applyFilter(filter.copyWith(categoryId: () => null));
-      }));
-    }
-    if (filter.zoneId != null) {
-      chips.add(_buildChip('Khu vực: #${filter.zoneId}', () {
-        vm.applyFilter(filter.copyWith(zoneId: () => null));
-      }));
-    }
-    if (filter.priority != null) {
-      chips.add(_buildChip('Ưu tiên: ${filter.priority}', () {
-        vm.applyFilter(filter.copyWith(priority: () => null));
-      }));
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: chips
-            .map((c) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: c,
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  Widget _buildChip(String label, VoidCallback onDelete) {
-    return Chip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      deleteIcon: const Icon(Icons.close, size: 16),
-      onDeleted: onDelete,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }
@@ -1036,13 +965,10 @@ class _FilterSheetState extends State<_FilterSheet> {
   late String? _from;
   late String? _to;
   late int? _categoryId;
-  late int? _zoneId;
   late String? _priority;
 
   List<IncidentCategory> _categories = [];
   bool _loadingCategories = true;
-
-  final _zoneCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -1050,16 +976,13 @@ class _FilterSheetState extends State<_FilterSheet> {
     _from = widget.currentFilter.from;
     _to = widget.currentFilter.to;
     _categoryId = widget.currentFilter.categoryId;
-    _zoneId = widget.currentFilter.zoneId;
     _priority = widget.currentFilter.priority;
-    _zoneCtrl.text = _zoneId?.toString() ?? '';
 
     _loadCategories();
   }
 
   @override
   void dispose() {
-    _zoneCtrl.dispose();
     super.dispose();
   }
 
@@ -1128,40 +1051,31 @@ class _FilterSheetState extends State<_FilterSheet> {
               const SizedBox(height: 16),
 
               // Category dropdown
-              DropdownButtonFormField<int?>(
-                value: _categoryId,
-                decoration: const InputDecoration(
-                  labelText: 'Danh mục',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('Tất cả'),
+              if (_loadingCategories)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              else
+                DropdownButtonFormField<int?>(
+                  value: _categoryId,
+                  decoration: const InputDecoration(
+                    labelText: 'Danh mục',
+                    border: OutlineInputBorder(),
                   ),
-                  if (!_loadingCategories)
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Tất cả'),
+                    ),
                     ..._categories.map((c) => DropdownMenuItem<int?>(
                           value: c.id,
                           child: Text(c.name, overflow: TextOverflow.ellipsis),
                         )),
-                ],
-                onChanged: (v) => setState(() => _categoryId = v),
-              ),
-              const SizedBox(height: 16),
-
-              // Zone ID field
-              TextFormField(
-                controller: _zoneCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Khu vực (Zone ID)',
-                  hintText: 'Ví dụ: 1, 2, 3...',
-                  border: OutlineInputBorder(),
+                  ],
+                  onChanged: (v) => setState(() => _categoryId = v),
                 ),
-                keyboardType: TextInputType.number,
-                onChanged: (v) {
-                  _zoneId = int.tryParse(v);
-                },
-              ),
               const SizedBox(height: 16),
 
               // Priority dropdown
@@ -1211,7 +1125,6 @@ class _FilterSheetState extends State<_FilterSheet> {
                           from: _from,
                           to: _to,
                           categoryId: _categoryId,
-                          zoneId: _zoneId,
                           priority: _priority,
                         ));
                         Navigator.pop(context);
