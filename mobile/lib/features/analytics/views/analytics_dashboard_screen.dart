@@ -210,56 +210,58 @@ class _ScorecardsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (vm.statsState == AnalyticsViewState.loading && vm.stats == null) {
-      return SizedBox(
-        height: 100,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemBuilder: (_, __) => _buildShimmerCard(),
-        ),
+      return Row(
+        children: [
+          Expanded(child: _buildSingleShimmer()),
+          const SizedBox(width: 8),
+          Expanded(child: _buildSingleShimmer()),
+          const SizedBox(width: 8),
+          Expanded(child: _buildSingleShimmer()),
+        ],
       );
     }
 
     final stats = vm.stats;
     if (stats == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 100,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _ScoreCard(
-            label: 'Tổng báo cáo',
+    return Row(
+      children: [
+        Expanded(
+          child: _ScoreCard(
+            label: 'Tổng số\nbáo cáo',
             value: '${stats.totalReports}',
             icon: Icons.description_outlined,
             color: AppColors.info,
           ),
-          const SizedBox(width: 12),
-          _ScoreCard(
-            label: 'Tỉ lệ hoàn thành',
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ScoreCard(
+            label: 'Tỉ lệ\nthành công',
             value: '${stats.completionRate.toStringAsFixed(1)}%',
             icon: Icons.check_circle_outline_rounded,
             color: AppColors.success,
           ),
-          const SizedBox(width: 12),
-          _ScoreCard(
-            label: 'Thời gian xử lý',
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ScoreCard(
+            label: 'Thời gian\nxử lý TB',
             value: '${stats.averageResolutionHours.toStringAsFixed(1)}h',
             icon: Icons.schedule_rounded,
             color: AppColors.warning,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildShimmerCard() {
+  Widget _buildSingleShimmer() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade200,
       highlightColor: Colors.grey.shade100,
       child: Container(
-        width: 150,
+        height: 100,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -285,8 +287,8 @@ class _ScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(14),
+      height: 100,
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -298,15 +300,15 @@ class _ScoreCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 6),
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   label,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -316,7 +318,7 @@ class _ScoreCard extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: color,
             ),
@@ -591,36 +593,37 @@ class _PriorityBarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final order = ['critical', 'high', 'medium', 'low'];
     final labels = {
-      'critical': 'Khẩn cấp',
+      'critical': 'Nghiêm trọng',
       'high': 'Cao',
       'medium': 'Trung bình',
-      'low': 'Thấp'
+      'low': 'Thấp',
     };
     final colors = {
-      'critical': AppColors.priorityCritical,
-      'high': AppColors.priorityHigh,
-      'medium': AppColors.priorityMedium,
-      'low': const Color(0xFF66BB6A),
+      'critical': const Color(0xFFEF4444), // red
+      'high': const Color(0xFFF97316), // orange
+      'medium': const Color(0xFFFBBF24), // yellow
+      'low': const Color(0xFF3B82F6), // blue
     };
 
     final maxVal = data.values.fold<int>(0, max).toDouble();
 
     return SizedBox(
-      height: 200,
+      height: 220,
       child: BarChart(
         BarChartData(
-          maxY: maxVal > 0 ? maxVal * 1.2 : 10,
+          maxY: maxVal > 0 ? maxVal * 1.35 : 10,
           barGroups: order.asMap().entries.map((entry) {
             final i = entry.key;
             final key = entry.value;
             final val = (data[key] ?? 0).toDouble();
             return BarChartGroupData(
               x: i,
+              showingTooltipIndicators: [0],
               barRods: [
                 BarChartRodData(
                   toY: val,
                   color: colors[key] ?? AppColors.textHint,
-                  width: 28,
+                  width: 36,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(6),
                   ),
@@ -640,14 +643,18 @@ class _PriorityBarChart extends StatelessWidget {
                 showTitles: true,
                 getTitlesWidget: (value, _) {
                   final idx = value.toInt();
-                  if (idx < 0 || idx >= order.length)
+                  if (idx < 0 || idx >= order.length) {
                     return const SizedBox.shrink();
+                  }
                   return Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       labels[order[idx]] ?? order[idx],
                       style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary),
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   );
                 },
@@ -657,14 +664,19 @@ class _PriorityBarChart extends StatelessWidget {
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(
+            enabled: false,
             touchTooltipData: BarTouchTooltipData(
+              tooltipPadding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              tooltipMargin: 4,
+              getTooltipColor: (_) => Colors.transparent,
               getTooltipItem: (group, groupIdx, rod, rodIdx) {
                 return BarTooltipItem(
                   '${rod.toY.toInt()}',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                  TextStyle(
+                    color: colors[order[groupIdx]] ?? AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
                   ),
                 );
               },
@@ -676,7 +688,7 @@ class _PriorityBarChart extends StatelessWidget {
   }
 }
 
-// ── Horizontal Bar Chart: by Zone ────────────────────────────────────────────
+// ── List-style Zone Chart ────────────────────────────────────────────────────
 
 class _ZoneBarChart extends StatelessWidget {
   final Map<String, int> data;
@@ -685,79 +697,74 @@ class _ZoneBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sort descending, take top 8.
+    // Sort descending, show all.
     final entries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final top = entries.take(8).toList();
-    final maxVal = top.isEmpty ? 1.0 : top.first.value.toDouble();
+    final maxVal = entries.isEmpty ? 1 : entries.first.value;
 
-    return SizedBox(
-      height: (top.length * 40.0).clamp(80, 320),
-      child: BarChart(
-        BarChartData(
-          maxY: maxVal * 1.2,
-          barGroups: top.asMap().entries.map((entry) {
-            final i = entry.key;
-            final e = entry.value;
-            return BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: e.value.toDouble(),
-                  color: AppColors.primary,
-                  width: 16,
-                  borderRadius: const BorderRadius.horizontal(
-                    right: Radius.circular(4),
+    return Column(
+      children: entries.map((e) {
+        final fraction = maxVal > 0 ? e.value / maxVal : 0.0;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              // Zone name (left)
+              SizedBox(
+                width: 130,
+                child: Text(
+                  e.key,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Horizontal bar
+              Expanded(
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: fraction.clamp(0.02, 1.0),
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Count (right)
+              SizedBox(
+                width: 32,
+                child: Text(
+                  '${e.value}',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-              ],
-            );
-          }).toList(),
-          titlesData: FlTitlesData(
-            bottomTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 90,
-                getTitlesWidget: (value, _) {
-                  final idx = value.toInt();
-                  if (idx < 0 || idx >= top.length)
-                    return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: Text(
-                      top[idx].key,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                },
               ),
-            ),
+            ],
           ),
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, groupIdx, rod, rodIdx) {
-                return BarTooltipItem(
-                  '${rod.toY.toInt()}',
-                  const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 }
@@ -888,15 +895,36 @@ class _ExportSection extends StatelessWidget {
             behavior: SnackBarBehavior.floating,
           ),
         );
+        vm.clearExportState();
       });
     }
+
+    // Show snackbar on export success.
+    if (vm.exportState == AnalyticsViewState.success &&
+        vm.lastExportedPath != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Xuất file thành công!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        vm.clearExportState();
+      });
+    }
+
+    final isLoadingExcel = isLoading && vm.exportType == 'excel';
+    final isLoadingPdf = isLoading && vm.exportType == 'pdf';
 
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
             onPressed: isLoading ? null : () => vm.exportExcel(),
-            icon: isLoading
+            icon: isLoadingExcel
                 ? const SizedBox(
                     width: 18,
                     height: 18,
@@ -906,7 +934,7 @@ class _ExportSection extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.table_chart_outlined, size: 18),
-            label: const Text('Xuất Excel'),
+            label: const Text('Excel'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF217346),
               foregroundColor: Colors.white,
@@ -921,7 +949,7 @@ class _ExportSection extends StatelessWidget {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: isLoading ? null : () => vm.exportPdf(),
-            icon: isLoading
+            icon: isLoadingPdf
                 ? const SizedBox(
                     width: 18,
                     height: 18,
@@ -931,7 +959,7 @@ class _ExportSection extends StatelessWidget {
                     ),
                   )
                 : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-            label: const Text('Xuất PDF'),
+            label: const Text('PDF'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC62828),
               foregroundColor: Colors.white,
@@ -1145,7 +1173,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('Tất cả')),
-                  DropdownMenuItem(value: 'critical', child: Text('Khẩn cấp')),
+                  DropdownMenuItem(
+                      value: 'critical', child: Text('Nghiêm trọng')),
                   DropdownMenuItem(value: 'high', child: Text('Cao')),
                   DropdownMenuItem(value: 'medium', child: Text('Trung bình')),
                   DropdownMenuItem(value: 'low', child: Text('Thấp')),

@@ -59,6 +59,14 @@ class AnalyticsViewModel extends ChangeNotifier {
 
   String? get exportError => _exportError;
 
+  String? _lastExportedPath;
+
+  String? get lastExportedPath => _lastExportedPath;
+
+  String? _exportType;
+
+  String? get exportType => _exportType;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // LOAD DASHBOARD
   // ═══════════════════════════════════════════════════════════════════════════
@@ -135,18 +143,38 @@ class AnalyticsViewModel extends ChangeNotifier {
   Future<void> _export(String type) async {
     _exportState = AnalyticsViewState.loading;
     _exportError = null;
+    _lastExportedPath = null;
+    _exportType = type;
     notifyListeners();
 
     try {
       final bytes = await _service.exportFile(type, _activeFilter);
-      final dir = await getTemporaryDirectory();
+      if (bytes.isEmpty) {
+        _exportError = 'File trống, vui lòng thử lại';
+        _exportState = AnalyticsViewState.error;
+        notifyListeners();
+        return;
+      }
+      // Try to get Downloads directory, fallback to Documents
+      Directory? dir = await getDownloadsDirectory();
+      dir ??= await getApplicationDocumentsDirectory();
+
       final ext = type == 'excel' ? 'xlsx' : 'pdf';
       final filename =
           'cityvoice-reports-${DateTime.now().millisecondsSinceEpoch}.$ext';
       final file = File('${dir.path}/$filename');
       await file.writeAsBytes(bytes);
-      await OpenFilex.open(file.path);
+      _lastExportedPath = file.path;
       _exportState = AnalyticsViewState.success;
+
+      debugPrint('Exported to: ${file.path}');
+
+      // Try to open; don't fail the export if open fails.
+      try {
+        await OpenFilex.open(file.path);
+      } catch (_) {
+        // No app to open, but file is saved — that's still success.
+      }
     } on DioException catch (e) {
       _exportError = _extractDioError(e);
       _exportState = AnalyticsViewState.error;
@@ -154,6 +182,14 @@ class AnalyticsViewModel extends ChangeNotifier {
       _exportError = 'Không thể xuất file: $e';
       _exportState = AnalyticsViewState.error;
     }
+    notifyListeners();
+  }
+
+  /// Resets export state so the UI doesn't show the same notification multiple times.
+  void clearExportState() {
+    _exportState = AnalyticsViewState.idle;
+    _lastExportedPath = null;
+    _exportType = null;
     notifyListeners();
   }
 
