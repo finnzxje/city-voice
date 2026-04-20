@@ -1,30 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/utils/utils.dart';
-import '../viewmodels/report_view_model.dart';
 import '../models/report.dart';
-
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const _kGreen = Color(0xFF1B5E44); // dark-green: completed steps
-const _kBlue = Color(0xFF2563EB); // royal-blue: current when newly_received
-const _kOrange = Color(0xFFF59E0B); // amber: current when in_progress
-const _kGrey = Color(0xFFCBD5E1); // pending node
-const _kGreyLine = Color(0xFFE2E8F0); // pending connector
-const _kGreenLine = Color(0xFF1B5E44); // completed connector
-
-// ── Node visual styles ────────────────────────────────────────────────────────
-enum _NodeStyle {
-  doneGreen, // dark-green filled + white ✓  (completed step)
-  currentBlue, // royal-blue filled + white ✓  (active when newly_received)
-  currentOrange, // amber filled + white wrench   (active when in_progress)
-  pendingGrey, // grey filled + faded icon      (not yet reached)
-  rejected, // red filled + white ✗
-}
+import '../viewmodels/report_view_model.dart';
+import 'widgets/timeline_step.dart';
 
 class ReportDetailScreen extends StatefulWidget {
   final String reportId;
@@ -406,57 +390,52 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     );
   }
 
-  // ── Timeline builder ───────────────────────────────────────────────────────
+  // ── Timeline builder ─────────────────────────────────────────────────────────
   Widget _buildTimeline(Report report) {
     final s = report.currentStatus;
 
-    final _NodeStyle s0, s1, s2;
+    final TimelineNodeStyle s0, s1, s2;
     bool isCurrent0 = false;
     bool isCurrent1 = false;
     bool isCurrent2 = false;
 
     switch (s) {
       case 'newly_received':
-        s0 = _NodeStyle.currentBlue;
+        s0 = TimelineNodeStyle.currentBlue;
         isCurrent0 = true;
-        s1 = _NodeStyle.pendingGrey;
-        s2 = _NodeStyle.pendingGrey;
-        break;
+        s1 = TimelineNodeStyle.pendingGrey;
+        s2 = TimelineNodeStyle.pendingGrey;
       case 'in_progress':
-        s0 = _NodeStyle.doneGreen;
-        s1 = _NodeStyle.currentOrange;
+        s0 = TimelineNodeStyle.doneGreen;
+        s1 = TimelineNodeStyle.currentOrange;
         isCurrent1 = true;
-        s2 = _NodeStyle.pendingGrey;
-        break;
+        s2 = TimelineNodeStyle.pendingGrey;
       case 'resolved':
-        s0 = _NodeStyle.doneGreen;
-        s1 = _NodeStyle.doneGreen;
-        s2 = _NodeStyle.doneGreen;
+        s0 = TimelineNodeStyle.doneGreen;
+        s1 = TimelineNodeStyle.doneGreen;
+        s2 = TimelineNodeStyle.doneGreen;
         isCurrent2 = true;
-        break;
       case 'rejected':
-        s0 = _NodeStyle.doneGreen;
-        s1 = _NodeStyle.doneGreen;
-        s2 = _NodeStyle.rejected;
+        s0 = TimelineNodeStyle.doneGreen;
+        s1 = TimelineNodeStyle.doneGreen;
+        s2 = TimelineNodeStyle.rejected;
         isCurrent2 = true;
-        break;
       default:
-        s0 = _NodeStyle.currentBlue;
+        s0 = TimelineNodeStyle.currentBlue;
         isCurrent0 = true;
-        s1 = _NodeStyle.pendingGrey;
-        s2 = _NodeStyle.pendingGrey;
+        s1 = TimelineNodeStyle.pendingGrey;
+        s2 = TimelineNodeStyle.pendingGrey;
     }
 
-    bool _isActive(_NodeStyle style) =>
-        style == _NodeStyle.doneGreen ||
-        style == _NodeStyle.currentBlue ||
-        style == _NodeStyle.currentOrange ||
-        style == _NodeStyle.rejected;
+    bool isActive(TimelineNodeStyle style) =>
+        style == TimelineNodeStyle.doneGreen ||
+        style == TimelineNodeStyle.currentBlue ||
+        style == TimelineNodeStyle.currentOrange ||
+        style == TimelineNodeStyle.rejected;
 
-    final line0 = _isActive(s1) ? _kGreenLine : _kGreyLine;
-    final line1 = _isActive(s2) ? _kGreenLine : _kGreyLine;
+    final line0 = isActive(s1) ? kTimelineGreenLine : kTimelineGreyLine;
+    final line1 = isActive(s2) ? kTimelineGreenLine : kTimelineGreyLine;
 
-    // Step 1 title
     final step1Title =
         report.assignedToName != null && report.assignedToName!.isNotEmpty
             ? 'Đang xử lý - Đã giao cho ${report.assignedToName}'
@@ -468,7 +447,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
 
     return Column(
       children: [
-        _TimelineStep(
+        TimelineStep(
           title: 'Mới tiếp nhận',
           date: report.createdAt,
           nodeStyle: s0,
@@ -477,7 +456,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           isResolvedNode: false,
           isCurrent: isCurrent0,
         ),
-        _TimelineStep(
+        TimelineStep(
           title: step1Title,
           date: step1Date,
           fallbackSubtitle: s == 'newly_received' ? 'Đang chờ phân công' : null,
@@ -488,22 +467,22 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           isCurrent: isCurrent1,
         ),
         if (s != 'rejected')
-          _TimelineStep(
+          TimelineStep(
             title: 'Đã xử lý',
             date: report.resolvedAt,
             fallbackSubtitle: s != 'resolved' ? 'Đang chờ xử lý' : null,
             nodeStyle: s2,
-            lineColor: _kGreyLine,
+            lineColor: kTimelineGreyLine,
             isLast: true,
             isResolvedNode: true,
             isCurrent: isCurrent2,
           )
         else
-          _TimelineStep(
+          TimelineStep(
             title: 'Từ chối',
             date: report.resolvedAt,
             nodeStyle: s2,
-            lineColor: _kGreyLine,
+            lineColor: kTimelineGreyLine,
             isLast: true,
             isResolvedNode: false,
             isCurrent: isCurrent2,
@@ -523,204 +502,3 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   }
 }
 
-// ─── Floating circle icon button ──────────────────────────────────────────────
-
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CircleIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.20),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-}
-
-// ─── Timeline Step Widget ─────────────────────────────────────────────────────
-
-class _TimelineStep extends StatelessWidget {
-  final String title;
-  final DateTime? date;
-  final String? fallbackSubtitle;
-  final _NodeStyle nodeStyle;
-  final Color lineColor;
-  final bool isLast;
-  final bool isResolvedNode;
-  final bool isCurrent;
-
-  const _TimelineStep({
-    required this.title,
-    this.date,
-    this.fallbackSubtitle,
-    required this.nodeStyle,
-    required this.lineColor,
-    required this.isLast,
-    required this.isResolvedNode,
-    required this.isCurrent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color nodeBg;
-    final Color titleColor;
-    final Color subtitleColor;
-    final IconData iconData;
-    final Color iconColor;
-
-    final double iconSize = isCurrent ? 16.0 : 12.0;
-
-    switch (nodeStyle) {
-      case _NodeStyle.doneGreen:
-        nodeBg = _kGreen;
-        titleColor = const Color(0xFF1E293B);
-        subtitleColor = const Color(0xFF94A3B8);
-        iconData = isResolvedNode ? Icons.verified_outlined : Icons.check;
-        iconColor = Colors.white;
-        break;
-      case _NodeStyle.currentBlue:
-        nodeBg = _kBlue;
-        titleColor = const Color(0xFF0F172A);
-        subtitleColor = const Color(0xFF475569);
-        iconData = Icons.check;
-        iconColor = Colors.white;
-        break;
-      case _NodeStyle.currentOrange:
-        nodeBg = _kOrange;
-        titleColor = const Color(0xFF0F172A);
-        subtitleColor = const Color(0xFF475569);
-        iconData = Icons.handyman;
-        iconColor = Colors.white;
-        break;
-      case _NodeStyle.pendingGrey:
-        nodeBg = _kGrey;
-        titleColor = const Color(0xFF94A3B8);
-        subtitleColor = const Color(0xFFCBD5E1);
-        iconData = isResolvedNode ? Icons.verified_outlined : Icons.handyman;
-        iconColor = Colors.white;
-        break;
-      case _NodeStyle.rejected:
-        nodeBg = const Color(0xFFDC2626);
-        titleColor = const Color(0xFF0F172A);
-        subtitleColor = const Color(0xFF475569);
-        iconData = Icons.close;
-        iconColor = Colors.white;
-        break;
-    }
-
-    final displaySubtitle = date != null
-        ? '${DateFormat('dd/MM/yyyy').format(date!)} • '
-            '${DateFormat('HH:mm').format(date!)}'
-        : (fallbackSubtitle ?? '');
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Left: circle node + connector ─────────────────────────────
-          SizedBox(
-            width: 40,
-            child: Column(
-              children: [
-                // Vẽ Node
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: isCurrent
-                        ? Container(
-                            // Vòng halo mờ bên ngoài cho node hiện tại
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: nodeBg.withOpacity(0.2), // Màu mờ
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Container(
-                                // Hình tròn đậm bên trong
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: nodeBg,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(iconData,
-                                    size: iconSize, color: iconColor),
-                              ),
-                            ),
-                          )
-                        : Container(
-                            // Node bình thường (quá khứ/tương lai) sẽ nhỏ hơn
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: nodeBg,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(iconData,
-                                size: iconSize, color: iconColor),
-                          ),
-                  ),
-                ),
-                // Vẽ đường thẳng nối
-                if (!isLast)
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        color: lineColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // ── Right: title + subtitle ────────────────────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 28.0, top: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: titleColor,
-                    ),
-                  ),
-                  if (displaySubtitle.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      displaySubtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subtitleColor,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

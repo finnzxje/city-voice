@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart'; // Thêm thư viện intl để format ngày tháng
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/utils.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/models/report.dart';
 import '../../review/viewmodels/staff_workflow_view_model.dart';
+import 'widgets/staff_filter_widgets.dart';
+import 'widgets/staff_report_card.dart';
 
 /// Dashboard for staff / manager / admin roles.
 class StaffDashboardScreen extends StatefulWidget {
@@ -38,19 +39,15 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     super.dispose();
   }
 
-  // group reports by date (ignoring time)
   Map<DateTime, List<Report>> _groupReportsByDate(List<Report> reports) {
     final Map<DateTime, List<Report>> grouped = {};
-    for (var report in reports) {
+    for (final report in reports) {
       final date = DateTime(
         report.createdAt.year,
         report.createdAt.month,
         report.createdAt.day,
       );
-      if (!grouped.containsKey(date)) {
-        grouped[date] = [];
-      }
-      grouped[date]!.add(report);
+      grouped.putIfAbsent(date, () => []).add(report);
     }
     return grouped;
   }
@@ -86,12 +83,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   .toList();
             }
 
-            // Group reports for the UI
             final groupedReports = _groupReportsByDate(filteredReports);
             final sortedDates = groupedReports.keys.toList()
-              ..sort((a, b) => b.compareTo(a)); // Newest first
+              ..sort((a, b) => b.compareTo(a));
 
-            final bool isAnyFilterActive = vm.hasActiveFilters ||
+            final isAnyFilterActive = vm.hasActiveFilters ||
                 _searchQuery.isNotEmpty ||
                 _selectedDate != null;
 
@@ -100,15 +96,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               color: AppColors.primary,
               child: CustomScrollView(
                 slivers: [
-                  // ── Header ────────────────────────────────────────────
                   SliverToBoxAdapter(
                       child: _buildHeader(theme, authVm, roleName)),
-
-                  // ── Filter Section ──────────────────────
                   SliverToBoxAdapter(
                       child: _buildFilterSection(theme, vm, isAnyFilterActive)),
-
-                  // ── Section Title ──────────────────────────────────────────
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
@@ -134,7 +125,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     ),
                   ),
 
-                  // ── Report List (Grouped by Date & Horizontal Scroll) ──────
+                  // ── Report List ──
                   if (vm.isLoading && vm.reports.isEmpty)
                     const SliverFillRemaining(
                       child: Center(
@@ -157,10 +148,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Date Header (Pill + Divider)
                             _buildDateHeader(date),
-
-                            // Horizontal List of Cards
                             SizedBox(
                               height: 330,
                               child: ListView.separated(
@@ -171,20 +159,18 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                                 separatorBuilder: (_, __) =>
                                     const SizedBox(width: 16),
                                 itemBuilder: (context, cardIndex) {
-                                  return _StaffHorizontalReportCard(
+                                  return StaffHorizontalReportCard(
                                     report: reportsForDate[cardIndex],
                                   );
                                 },
                               ),
                             ),
-                            const SizedBox(
-                                height: 24), // Space between date groups
+                            const SizedBox(height: 24),
                           ],
                         );
                       },
                     ),
 
-                  // ── Pagination Controls ───────────────
                   if (vm.totalPages > 1)
                     SliverToBoxAdapter(child: _buildPaginationBar(theme, vm)),
 
@@ -210,12 +196,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: _buildSearchBar(),
-              ),
+              Expanded(child: _buildSearchBar()),
               if (isAnyFilterActive) ...[
                 const SizedBox(width: 10),
-                _ClearFilterButton(onTap: () {
+                ClearFilterButton(onTap: () {
                   setState(() {
                     _searchController.clear();
                     _searchQuery = '';
@@ -227,12 +211,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // ── Row 2: Status + Priority ────────────────────────
           Row(
             children: [
               Expanded(
-                child: _FilterDropdown<String>(
+                child: FilterDropdown<String>(
                   label: 'Trạng thái',
                   value: vm.statusFilter,
                   items: const [
@@ -249,7 +231,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _FilterDropdown<String>(
+                child: FilterDropdown<String>(
                   label: 'Ưu tiên',
                   value: vm.priorityFilter,
                   items: const [
@@ -266,12 +248,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // ── Row 3: Category + Date Picker ──────────────────
           Row(
             children: [
               Expanded(
-                child: _FilterDropdown<int>(
+                child: FilterDropdown<int>(
                   label: 'Danh mục',
                   value: vm.categoryIdFilter,
                   items: vm.categories
@@ -285,9 +265,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: _buildDatePickerButton(),
-              ),
+              Expanded(child: _buildDatePickerButton()),
             ],
           ),
         ],
@@ -309,11 +287,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
+        onChanged: (value) => setState(() => _searchQuery = value),
         style: const TextStyle(
             fontSize: 13,
             color: AppColors.textPrimary,
@@ -335,9 +309,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       size: 16, color: AppColors.textSecondary),
                   onPressed: () {
                     _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
+                    setState(() => _searchQuery = '');
                   },
                 )
               : null,
@@ -349,7 +321,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   Widget _buildDatePickerButton() {
     return InkWell(
       onTap: () async {
-        final DateTime? picked = await showDatePicker(
+        final picked = await showDatePicker(
           context: context,
           initialDate: _selectedDate ?? DateTime.now(),
           firstDate: DateTime(2020),
@@ -368,9 +340,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           },
         );
         if (picked != null && picked != _selectedDate) {
-          setState(() {
-            _selectedDate = picked;
-          });
+          setState(() => _selectedDate = picked);
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -422,7 +392,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Date Header Widget
+  // Date Header
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDateHeader(DateTime date) {
@@ -432,20 +402,19 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
     String label;
     Color bgColor;
-    Color textColor = Colors.white;
 
     if (date == today) {
       label =
           'HÔM NAY, ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-      bgColor = const Color(0xFF0044CC); // Blue
+      bgColor = const Color(0xFF0044CC);
     } else if (date == yesterday) {
       label =
           'HÔM QUA, ${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-      bgColor = const Color(0xFF6B7280); // Grey
+      bgColor = const Color(0xFF6B7280);
     } else {
       label =
           '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-      bgColor = const Color(0xFF6B7280); // Grey
+      bgColor = const Color(0xFF6B7280);
     }
 
     return Padding(
@@ -460,8 +429,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
             ),
             child: Text(
               label,
-              style: TextStyle(
-                color: textColor,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
@@ -544,19 +513,15 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Previous
-          _PaginationButton(
+          PaginationButton(
             icon: Icons.chevron_left_rounded,
             enabled: vm.currentPage > 0,
             onTap: () => vm.goToPage(vm.currentPage - 1),
           ),
           const SizedBox(width: 8),
-
-          // Page numbers
           ...List.generate(
             vm.totalPages > 5 ? 5 : vm.totalPages,
             (index) {
-              // Show pages around current page
               int page;
               if (vm.totalPages <= 5) {
                 page = index;
@@ -597,11 +562,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               );
             },
           ),
-
           const SizedBox(width: 8),
-
-          // Next
-          _PaginationButton(
+          PaginationButton(
             icon: Icons.chevron_right_rounded,
             enabled: vm.currentPage < vm.totalPages - 1,
             onTap: () => vm.goToPage(vm.currentPage + 1),
@@ -685,336 +647,5 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
       'staff' => 'NHÂN VIÊN',
       _ => 'NHÂN VIÊN',
     };
-  }
-}
-
-// ─── Filter Dropdown ──────────────────────────────────────────────
-
-class _FilterDropdown<T> extends StatelessWidget {
-  final String label;
-  final T? value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-
-  const _FilterDropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: value != null
-            ? AppColors.primary.withOpacity(0.08)
-            : AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: value != null ? AppColors.primary : AppColors.border,
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          value: value,
-          hint: Text(label,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary)),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-          isExpanded: true,
-          style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w500),
-          items: [
-            DropdownMenuItem<T>(
-              value: null,
-              child: Text('Tất cả $label',
-                  style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textHint,
-                      fontStyle: FontStyle.italic)),
-            ),
-            ...items,
-          ],
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Clear Filter Button ──────────────────────────────────────────
-
-class _ClearFilterButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _ClearFilterButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 48,
-        width: 48,
-        decoration: BoxDecoration(
-          color: AppColors.error.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error.withOpacity(0.3)),
-        ),
-        child: const Icon(Icons.filter_alt_off_rounded,
-            size: 20, color: AppColors.error),
-      ),
-    );
-  }
-}
-
-// ─── Pagination Button ────────────────────────────────────────────
-
-class _PaginationButton extends StatelessWidget {
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _PaginationButton({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: enabled ? AppColors.surfaceVariant : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border:
-              Border.all(color: enabled ? AppColors.border : AppColors.divider),
-        ),
-        child: Icon(icon,
-            size: 20,
-            color: enabled ? AppColors.textPrimary : AppColors.textHint),
-      ),
-    );
-  }
-}
-
-// ─── Horizontal Report Card ──────────────────────────────────────────────
-
-class _StaffHorizontalReportCard extends StatelessWidget {
-  final Report report;
-
-  const _StaffHorizontalReportCard({required this.report});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Status styling
-    final statusColor = AppColors.statusColor(report.currentStatus);
-    final statusBg = AppColors.statusBackgroundColor(report.currentStatus);
-
-    return Container(
-      width: 240,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.push('/staff-reports/${report.id}'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Image & Priority Tag Stack ───────────────────────────────
-                SizedBox(
-                  height: 140,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Image or Placeholder
-                      if (report.incidentImageUrl != null)
-                        Image.network(
-                          Utils.getSafeUrl(report.incidentImageUrl),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildPlaceholderImage(),
-                        )
-                      else
-                        _buildPlaceholderImage(),
-
-                      // Priority Tag (Top Left)
-                      if (report.priority != null)
-                        Positioned(
-                          top: 12,
-                          left: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.priorityColor(report.priority)
-                                  .withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              report.priorityLabel?.toUpperCase() ?? '',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Checkmark for resolved
-                      if (report.currentStatus == 'resolved')
-                        Positioned.fill(
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color:
-                                    Color(0xFF4A6B63), // Dark green from image
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.check,
-                                  color: Colors.white, size: 24),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                // ── Content Area ─────────────────────────────────────────────
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Time & Status Row
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}",
-                              style: const TextStyle(
-                                color: Color(0xFF0044CC), // Blue time text
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                            ),
-                            // Status Tag
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: statusBg,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                report.statusLabel,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Title
-                        Text(
-                          report.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF111827),
-                            fontSize: 15,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-
-                        // Description (or Citizen Name fallback)
-                        Text(
-                          report.description ??
-                              report.citizenName ??
-                              'Không có mô tả',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFF6B7280),
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const Spacer(),
-
-                        // Category Tag (Bottom Left)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE5E7EB), // Light grey
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            report.categoryName.toUpperCase(),
-                            style: const TextStyle(
-                              color: Color(0xFF374151), // Dark grey
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderImage() {
-    return Container(
-      color: const Color(0xFFEBF0FF), // Light blueish grey from image
-      child: const Center(
-        child: Icon(
-          Icons.broken_image_rounded,
-          color: Color(0xFFB0C4DE),
-          size: 48,
-        ),
-      ),
-    );
   }
 }

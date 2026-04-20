@@ -1,14 +1,17 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../models/incident_category.dart';
 import '../viewmodels/report_view_model.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'widgets/map_picker_screen.dart';
 
 /// Screen for submitting a new incident report.
 class SubmitReportScreen extends StatefulWidget {
@@ -114,11 +117,10 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     final LatLng? pickedLocation = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => _MapPickerScreen(initialLocation: initialLatLng),
+        builder: (context) => MapPickerScreen(initialLocation: initialLatLng),
       ),
     );
 
-    // update location
     if (pickedLocation != null) {
       setState(() {
         _latitude = pickedLocation.latitude;
@@ -726,104 +728,6 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Full-screen to choose location on map ───────────────
-class _MapPickerScreen extends StatefulWidget {
-  final LatLng initialLocation;
-
-  const _MapPickerScreen({required this.initialLocation});
-
-  @override
-  State<_MapPickerScreen> createState() => _MapPickerScreenState();
-}
-
-class _MapPickerScreenState extends State<_MapPickerScreen> {
-  late LatLng _currentCenter;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentCenter = widget.initialLocation;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Chọn vị trí sự cố',
-          style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 18,
-              fontWeight: FontWeight.w600),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF2563EB)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: _currentCenter,
-              initialZoom: 16.0,
-              onPositionChanged: (position, hasGesture) {
-                if (hasGesture && position.center != null) {
-                  setState(() {
-                    _currentCenter = position.center!;
-                  });
-                }
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.cityvoice',
-              ),
-            ],
-          ),
-
-          // Icon Pin in center
-          Center(
-            child: Transform.translate(
-              offset: const Offset(0, -20),
-              child: const Icon(
-                Icons.location_on,
-                size: 48,
-                color: Colors.redAccent,
-              ),
-            ),
-          ),
-
-          // confirm button
-          Positioned(
-            bottom: 30,
-            left: 20,
-            right: 20,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context, _currentCenter),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 4,
-              ),
-              child: const Text(
-                'Xác nhận vị trí này',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
             ),
           ),
         ],
