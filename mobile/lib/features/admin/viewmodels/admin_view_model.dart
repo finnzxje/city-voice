@@ -55,6 +55,34 @@ class AdminViewModel extends ChangeNotifier {
 
   String? get categoriesError => _categoriesError;
 
+  // ── Filter state ───────────────────────────────────────────────────────────
+  String _searchQuery = '';
+  String? _roleFilter;
+
+  String get searchQuery => _searchQuery;
+
+  String? get roleFilter => _roleFilter;
+
+  List<UserManifest> get filteredUsers {
+    return _users.where((user) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          user.fullName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.email.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesRole = _roleFilter == null || user.role == _roleFilter;
+      return matchesSearch && matchesRole;
+    }).toList();
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void setRoleFilter(String? role) {
+    _roleFilter = role;
+    notifyListeners();
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // USER MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════════════
