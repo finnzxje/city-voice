@@ -3,11 +3,13 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/models/incident_category.dart';
 import '../../reports/services/category_service.dart';
 import '../models/analytics_filter.dart';
@@ -41,6 +43,18 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0.5,
+        leading: context.read<AuthViewModel>().user?.role == 'manager'
+            ? IconButton(
+                icon: const Icon(Icons.logout_rounded),
+                tooltip: 'Đăng xuất',
+                onPressed: () async {
+                  final authVm = context.read<AuthViewModel>();
+                  await authVm.logout();
+                  if (context.mounted) context.go('/login');
+                },
+              )
+            : null,
+        // Shows back button for admin/others if history exists
         actions: [
           Consumer<AnalyticsViewModel>(
             builder: (context, vm, _) {

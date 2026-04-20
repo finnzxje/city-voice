@@ -195,7 +195,7 @@ class AppRouter {
 
     // Staff/manager trying to access citizen-only routes
     if (isStaffOrManager && isCitizenOnlyRoute) {
-      return '/staff-dashboard';
+      return homepage;
     }
 
     // Citizen trying to access staff/admin routes
