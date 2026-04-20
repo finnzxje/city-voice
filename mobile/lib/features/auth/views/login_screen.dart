@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../viewmodels/auth_view_model.dart';
 
@@ -101,7 +102,9 @@ class _LoginScreenState extends State<LoginScreen>
       final role = authVm.user?.role;
       if (role == 'admin') {
         context.go('/admin-dashboard');
-      } else if (role == 'staff' || role == 'manager') {
+      } else if (role == 'manager') {
+        context.go('/analytics');
+      } else if (role == 'staff') {
         context.go('/staff-dashboard');
       } else {
         context.go('/dashboard');

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../storage/secure_storage_helper.dart';
+
+import '../../features/admin/views/admin_category_list_screen.dart';
+import '../../features/admin/views/admin_dashboard_screen.dart';
+import '../../features/admin/views/admin_user_list_screen.dart';
+import '../../features/analytics/views/analytics_dashboard_screen.dart';
 import '../../features/auth/viewmodels/auth_view_model.dart';
 import '../../features/auth/views/login_screen.dart';
 import '../../features/auth/views/register_screen.dart';
 import '../../features/auth/views/verify_email_screen.dart';
+import '../../features/notifications/views/notifications_screen.dart';
 import '../../features/reports/views/dashboard_screen.dart';
+import '../../features/reports/views/report_detail_screen.dart';
 import '../../features/reports/views/staff_dashboard_screen.dart';
 import '../../features/reports/views/submit_report_screen.dart';
-import '../../features/reports/views/report_detail_screen.dart';
 import '../../features/review/views/staff_report_detail_screen.dart';
-import '../../features/notifications/views/notifications_screen.dart';
-import '../../features/admin/views/admin_dashboard_screen.dart';
-import '../../features/admin/views/admin_user_list_screen.dart';
-import '../../features/admin/views/admin_category_list_screen.dart';
+import '../storage/secure_storage_helper.dart';
 
 /// Declarative routing configuration for CityVoice.
 ///
@@ -125,6 +127,13 @@ class AppRouter {
         name: 'admin-categories',
         builder: (context, state) => const AdminCategoryListScreen(),
       ),
+
+      // ── Analytics route (manager + admin) ──────────────────────────────
+      GoRoute(
+        path: '/analytics',
+        name: 'analytics',
+        builder: (context, state) => const AnalyticsDashboardScreen(),
+      ),
     ],
   );
 
@@ -186,12 +195,18 @@ class AppRouter {
 
     // Staff/manager trying to access citizen-only routes
     if (isStaffOrManager && isCitizenOnlyRoute) {
-      return '/staff-dashboard';
+      return homepage;
     }
 
     // Citizen trying to access staff/admin routes
     if (isCitizen && (isStaffRoute || isAdminRoute)) {
       return '/dashboard';
+    }
+
+    // ── Analytics route guard: only manager + admin ─────────────────────
+    final isAnalyticsRoute = currentPath == '/analytics';
+    if (isAnalyticsRoute && !(role == 'manager' || role == 'admin')) {
+      return homepage;
     }
 
     return null;
@@ -201,7 +216,8 @@ class AppRouter {
   String _homepageForRole(AuthViewModel authVm) {
     final role = authVm.user?.role;
     if (role == 'admin') return '/admin-dashboard';
-    if (role == 'staff' || role == 'manager') return '/staff-dashboard';
+    if (role == 'manager') return '/analytics';
+    if (role == 'staff') return '/staff-dashboard';
     return '/dashboard';
   }
 }

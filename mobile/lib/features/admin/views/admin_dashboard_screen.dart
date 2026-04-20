@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
-import 'package:provider/provider.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -116,6 +117,15 @@ class AdminDashboardScreen extends StatelessWidget {
                     title: 'Quản lý danh mục',
                     subtitle: 'Thêm, sửa, ẩn các loại sự cố',
                     onTap: () => context.push('/admin/categories'),
+                  ),
+                  const SizedBox(height: 16),
+                  _AdminNavCard(
+                    icon: Icons.analytics_outlined,
+                    iconColor: const Color(0xFF1565C0),
+                    iconBgColor: const Color(0xFFE3F2FD),
+                    title: 'Báo cáo & Phân tích',
+                    subtitle: 'Thống kê, bản đồ nhiệt, xuất file',
+                    onTap: () => context.push('/analytics'),
                   ),
                   const SizedBox(height: 16),
                   _AdminNavCard(
