@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/auth/user_role.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/services/category_service.dart';
@@ -41,7 +42,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0.5,
-        leading: context.read<AuthViewModel>().user?.role == 'manager'
+        leading: context.read<AuthViewModel>().user?.role == UserRole.manager
             ? IconButton(
                 icon: const Icon(Icons.logout_rounded),
                 tooltip: 'Đăng xuất',

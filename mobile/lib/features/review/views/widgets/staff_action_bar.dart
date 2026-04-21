@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/auth/user_role.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/viewmodels/auth_view_model.dart';
 import '../../../reports/models/report.dart';
@@ -27,7 +28,7 @@ class StaffActionBar extends StatelessWidget {
     final authVm = context.read<AuthViewModel>();
     final currentUserId = authVm.user?.id;
     final currentUserRole = authVm.user?.role;
-    final canResolve = currentUserRole == 'admin' ||
+    final canResolve = currentUserRole == UserRole.admin ||
         (currentUserId != null &&
             report.assignedToId != null &&
             report.assignedToId == currentUserId);

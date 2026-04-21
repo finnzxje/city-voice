@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/auth/user_role.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/models/report.dart';
@@ -56,7 +57,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authVm = context.watch<AuthViewModel>();
-    final roleName = _roleLabel(authVm.user?.role);
+    final roleName =
+        (authVm.user?.role ?? UserRole.staff).staffDashboardBadgeLabel;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -638,14 +640,5 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         ],
       ),
     );
-  }
-
-  String _roleLabel(String? role) {
-    return switch (role) {
-      'admin' => 'ADMIN',
-      'manager' => 'QUẢN LÝ',
-      'staff' => 'NHÂN VIÊN',
-      _ => 'NHÂN VIÊN',
-    };
   }
 }

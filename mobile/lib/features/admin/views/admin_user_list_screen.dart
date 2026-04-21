@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/auth/user_role.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../viewmodels/admin_view_model.dart';
@@ -163,104 +164,104 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                                 : '?';
 
                             return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        leading: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: _avatarColor(user.role),
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        title: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                user.fullName,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (!user.isActive) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.textHint
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  'Đã vô hiệu',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.textHint,
-                                    fontWeight: FontWeight.w600,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 4),
+                              leading: CircleAvatar(
+                                radius: 22,
+                                backgroundColor: _avatarColor(user.role),
+                                child: Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
                                   ),
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
-                        subtitle: Text(
-                          user.email,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        trailing: DropdownButton<String>(
-                          value: vm.availableRoles.contains(user.role)
-                              ? user.role
-                              : null,
-                          underline: const SizedBox.shrink(),
-                          borderRadius: BorderRadius.circular(12),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: _roleColor(user.role),
-                          ),
-                          items: vm.availableRoles.map((role) {
-                            return DropdownMenuItem(
-                              value: role,
-                              child: Text(
-                                _roleLabel(role),
-                                style: TextStyle(
-                                  color: _roleColor(role),
-                                  fontWeight: FontWeight.w600,
+                              title: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      user.fullName,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (!user.isActive) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.textHint
+                                            .withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'Đã vô hiệu',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.textHint,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              subtitle: Text(
+                                user.email,
+                                style: const TextStyle(
                                   fontSize: 13,
+                                  color: AppColors.textSecondary,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: user.id == currentUserId
-                              ? null
-                              : (newRole) {
-                            if (newRole == null ||
-                                newRole == user.role) {
-                              return;
-                            }
-                            _showConfirmDialog(
-                              context,
-                              vm,
-                              user.id,
-                              user.fullName,
-                              user.role,
-                              newRole,
+                              trailing: DropdownButton<String>(
+                                value: vm.availableRoles.contains(user.role)
+                                    ? user.role
+                                    : null,
+                                underline: const SizedBox.shrink(),
+                                borderRadius: BorderRadius.circular(12),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _roleColor(user.role),
+                                ),
+                                items: vm.availableRoles.map((role) {
+                                  return DropdownMenuItem(
+                                    value: role,
+                                    child: Text(
+                                      _roleLabel(role),
+                                      style: TextStyle(
+                                        color: _roleColor(role),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: user.id == currentUserId
+                                    ? null
+                                    : (newRole) {
+                                        if (newRole == null ||
+                                            newRole == user.role) {
+                                          return;
+                                        }
+                                        _showConfirmDialog(
+                                          context,
+                                          vm,
+                                          user.id,
+                                          user.fullName,
+                                          user.role,
+                                          newRole,
+                                        );
+                                      },
+                              ),
                             );
                           },
                         ),
-                      );
-                    },
-                  ),
-                ),
+                      ),
               ),
             ],
           );
@@ -372,32 +373,24 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
   }
 
   Color _avatarColor(String role) {
-    return switch (role) {
-      'admin' => const Color(0xFFD32F2F),
-      'manager' => const Color(0xFF7B1FA2),
-      'staff' => const Color(0xFF1565C0),
-      'citizen' => AppColors.primary,
-      _ => AppColors.textHint,
+    return switch (UserRole.fromValue(role)) {
+      UserRole.admin => const Color(0xFFD32F2F),
+      UserRole.manager => const Color(0xFF7B1FA2),
+      UserRole.staff => const Color(0xFF1565C0),
+      UserRole.citizen => AppColors.primary,
     };
   }
 
   Color _roleColor(String role) {
-    return switch (role) {
-      'admin' => const Color(0xFFD32F2F),
-      'manager' => const Color(0xFF7B1FA2),
-      'staff' => const Color(0xFF1565C0),
-      'citizen' => AppColors.primary,
-      _ => AppColors.textSecondary,
+    return switch (UserRole.fromValue(role)) {
+      UserRole.admin => const Color(0xFFD32F2F),
+      UserRole.manager => const Color(0xFF7B1FA2),
+      UserRole.staff => const Color(0xFF1565C0),
+      UserRole.citizen => AppColors.primary,
     };
   }
 
   String _roleLabel(String role) {
-    return switch (role) {
-      'admin' => 'Admin',
-      'manager' => 'Manager',
-      'staff' => 'Staff',
-      'citizen' => 'Citizen',
-      _ => role,
-    };
+    return UserRole.fromValue(role).managementLabel;
   }
 }
