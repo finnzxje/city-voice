@@ -11,7 +11,7 @@ library;
 class ApiConstants {
   ApiConstants._(); // prevent instantiation
 
-  static const String localhost = 'http://10.251.7.161';
+  static const String localhost = 'http://10.251.0.144';
 
   // ── Base URL ───────────────────────────────────────────────────────────────
   /// Default base URL for the CityVoice Spring Boot backend.
@@ -70,4 +70,10 @@ class ApiConstants {
 
   /// Returns the path for a specific category (update).
   static String categoryById(int id) => '/categories/$id';
+
+  // ── Analytics endpoints ─────────────────────────────────────────────────
+  static const String analyticsHeatmap = '/analytics/heatmap';
+  static const String analyticsStats = '/analytics/stats';
+  static const String analyticsExportExcel = '/analytics/export/excel';
+  static const String analyticsExportPdf = '/analytics/export/pdf';
 }

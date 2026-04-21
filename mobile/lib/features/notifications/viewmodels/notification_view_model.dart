@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:collection';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
+import '../../../core/network/api_error_message_resolver.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
@@ -70,7 +73,7 @@ class NotificationViewModel extends ChangeNotifier {
       final snapshot = await _fetchSnapshot();
       _applySnapshot(snapshot);
     } on DioException catch (e) {
-      _errorMessage = _extractError(e);
+      _errorMessage = ApiErrorMessageResolver.fromDioException(e);
       notifyListeners();
     } catch (e) {
       _errorMessage = e.toString();
@@ -92,7 +95,7 @@ class NotificationViewModel extends ChangeNotifier {
       _notifications = await _notificationService.getNotifications();
       _unreadCount = _notifications.where((n) => !n.isRead).length;
     } on DioException catch (e) {
-      _errorMessage = _extractError(e);
+      _errorMessage = ApiErrorMessageResolver.fromDioException(e);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -241,14 +244,6 @@ class NotificationViewModel extends ChangeNotifier {
     }
 
     return false;
-  }
-
-  String _extractError(DioException e) {
-    final data = e.response?.data;
-    if (data is Map<String, dynamic>) {
-      return data['message'] as String? ?? 'Đã xảy ra lỗi';
-    }
-    return e.message ?? 'Đã xảy ra lỗi kết nối';
   }
 
   @override

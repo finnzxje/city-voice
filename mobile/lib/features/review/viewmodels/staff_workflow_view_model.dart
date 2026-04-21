@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/network/api_error_message_resolver.dart';
 import '../../../core/network/api_exception.dart';
 import '../../reports/models/incident_category.dart';
 import '../../reports/models/report.dart';
@@ -107,7 +108,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _currentPage = result.currentPage;
       _totalPages = result.totalPages;
     } on DioException catch (e) {
-      _errorMessage = _extractError(e);
+      _errorMessage = ApiErrorMessageResolver.fromDioException(e);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -174,7 +175,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
             result.reports.where((r) => r.id == reportId).firstOrNull;
       }
     } on DioException catch (e) {
-      _errorMessage = _extractError(e);
+      _errorMessage = ApiErrorMessageResolver.fromDioException(e);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -209,7 +210,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _selectedReport = updated;
       return true;
     } on DioException catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromDioException(e);
       return false;
     } catch (e) {
       _actionError = e.toString();
@@ -238,7 +239,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _selectedReport = updated;
       return true;
     } on DioException catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromDioException(e);
       return false;
     } catch (e) {
       _actionError = e.toString();
@@ -272,7 +273,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _actionError = e.message;
       return false;
     } on DioException catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromDioException(e);
       return false;
     } catch (e) {
       _actionError = e.toString();
@@ -291,16 +292,5 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _reports = List<Report>.from(_reports)..[index] = updated;
     }
     notifyListeners();
-  }
-
-  String _extractError(DioException e) {
-    if (e.error is ApiException) {
-      return (e.error as ApiException).message;
-    }
-    final data = e.response?.data;
-    if (data is Map<String, dynamic>) {
-      return data['message'] as String? ?? 'Đã xảy ra lỗi';
-    }
-    return e.message ?? 'Đã xảy ra lỗi kết nối';
   }
 }

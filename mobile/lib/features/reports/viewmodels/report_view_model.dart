@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:dio/dio.dart';
+
 import 'package:flutter/foundation.dart';
-import '../../../core/network/api_exception.dart';
+
+import '../../../core/network/api_error_message_resolver.dart';
 import '../models/incident_category.dart';
 import '../models/report.dart';
 import '../services/category_service.dart';
@@ -65,14 +66,6 @@ class ReportViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _extractError(Object e) {
-    if (e is DioException && e.error is ApiException) {
-      return (e.error as ApiException).message;
-    }
-    if (e is ApiException) return e.message;
-    return 'Đã xảy ra lỗi không xác định.';
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
   // ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -89,7 +82,7 @@ class ReportViewModel extends ChangeNotifier {
       _reports = results[0] as List<Report>;
       _categories = results[1] as List<IncidentCategory>;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {
       _setLoading(false);
     }
@@ -107,7 +100,7 @@ class ReportViewModel extends ChangeNotifier {
       _reports = results[0] as List<Report>;
       _categories = results[1] as List<IncidentCategory>;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {
       _setLoading(false);
     }
@@ -120,7 +113,7 @@ class ReportViewModel extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     }
   }
 
@@ -131,7 +124,7 @@ class ReportViewModel extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     }
   }
 
@@ -142,7 +135,7 @@ class ReportViewModel extends ChangeNotifier {
       _categories = await _categoryService.getCategories();
       notifyListeners();
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     }
   }
 
@@ -174,7 +167,7 @@ class ReportViewModel extends ChangeNotifier {
       notifyListeners();
       return report.id;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _isSubmitting = false;
       notifyListeners();
       return null;
@@ -189,7 +182,7 @@ class ReportViewModel extends ChangeNotifier {
     try {
       _selectedReport = await _reportService.getReportById(id);
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {
       _setLoading(false);
     }
