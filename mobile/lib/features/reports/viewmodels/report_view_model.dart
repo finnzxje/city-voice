@@ -70,17 +70,12 @@ class ReportViewModel extends ChangeNotifier {
   // ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Load all dashboard data: reports and categories.
+  /// Load dashboard reports for the initial citizen first paint.
   Future<void> loadDashboard() async {
     _setLoading(true);
     _setError(null);
     try {
-      final results = await Future.wait([
-        _reportService.getMyReports(),
-        _categoryService.getCategories(),
-      ]);
-      _reports = results[0] as List<Report>;
-      _categories = results[1] as List<IncidentCategory>;
+      _reports = await _reportService.getMyReports();
     } catch (e) {
       _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {

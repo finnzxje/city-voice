@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// CityVoice typography system built on the **Inter** typeface.
-///
-/// Provides a consistent hierarchy across the entire app, from large
-/// display headings to small captions and overlines.
 class AppTextStyles {
   AppTextStyles._();
+
+  static final String? fontFamily = GoogleFonts.inter().fontFamily;
 
   // ── Headings ───────────────────────────────────────────────────────────────
 
   /// Large display – splash / hero sections.
-  static TextStyle displayLarge = GoogleFonts.inter(
+  static final TextStyle displayLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 32,
     fontWeight: FontWeight.w800,
     letterSpacing: -0.5,
@@ -19,7 +18,8 @@ class AppTextStyles {
   );
 
   /// Prominent page headings.
-  static TextStyle headlineLarge = GoogleFonts.inter(
+  static final TextStyle headlineLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
@@ -27,14 +27,16 @@ class AppTextStyles {
   );
 
   /// Section headings.
-  static TextStyle headlineMedium = GoogleFonts.inter(
+  static final TextStyle headlineMedium = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 24,
     fontWeight: FontWeight.w700,
     height: 1.3,
   );
 
   /// Sub-section headings.
-  static TextStyle headlineSmall = GoogleFonts.inter(
+  static final TextStyle headlineSmall = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w600,
     height: 1.35,
@@ -43,21 +45,24 @@ class AppTextStyles {
   // ── Titles ─────────────────────────────────────────────────────────────────
 
   /// Card / tile titles.
-  static TextStyle titleLarge = GoogleFonts.inter(
+  static final TextStyle titleLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 18,
     fontWeight: FontWeight.w600,
     height: 1.35,
   );
 
   /// Toolbar / app bar titles.
-  static TextStyle titleMedium = GoogleFonts.inter(
+  static final TextStyle titleMedium = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 16,
     fontWeight: FontWeight.w600,
     height: 1.4,
   );
 
   /// Small titles & form labels.
-  static TextStyle titleSmall = GoogleFonts.inter(
+  static final TextStyle titleSmall = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 14,
     fontWeight: FontWeight.w600,
     height: 1.4,
@@ -66,21 +71,24 @@ class AppTextStyles {
   // ── Body ───────────────────────────────────────────────────────────────────
 
   /// Primary body text.
-  static TextStyle bodyLarge = GoogleFonts.inter(
+  static final TextStyle bodyLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 16,
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
 
   /// Default body text.
-  static TextStyle bodyMedium = GoogleFonts.inter(
+  static final TextStyle bodyMedium = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 14,
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
 
   /// Small supporting text.
-  static TextStyle bodySmall = GoogleFonts.inter(
+  static final TextStyle bodySmall = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w400,
     height: 1.5,
@@ -89,7 +97,8 @@ class AppTextStyles {
   // ── Labels & Captions ──────────────────────────────────────────────────────
 
   /// Button labels.
-  static TextStyle labelLarge = GoogleFonts.inter(
+  static final TextStyle labelLarge = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.3,
@@ -97,7 +106,8 @@ class AppTextStyles {
   );
 
   /// Chip / badge labels.
-  static TextStyle labelMedium = GoogleFonts.inter(
+  static final TextStyle labelMedium = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.4,
@@ -105,7 +115,8 @@ class AppTextStyles {
   );
 
   /// Smallest label / overline.
-  static TextStyle labelSmall = GoogleFonts.inter(
+  static final TextStyle labelSmall = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 11,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.5,

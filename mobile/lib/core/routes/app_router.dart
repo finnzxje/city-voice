@@ -42,7 +42,7 @@ class AppRouter {
   late final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/splash',
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: false,
     refreshListenable: Listenable.merge([_authViewModel, _storage]),
     redirect: _globalRedirect,
     routes: [
@@ -146,13 +146,14 @@ class AppRouter {
     GoRouterState state,
   ) async {
     final authVm = _authViewModel;
-    final hasToken = await _storage.hasTokens();
     final currentPath = state.matchedLocation;
-    final homepage = _homepageForRole(authVm);
 
     if (authVm.isRestoringSession) {
       return currentPath == '/splash' ? null : '/splash';
     }
+
+    final hasToken = await _storage.hasTokens();
+    final homepage = _homepageForRole(authVm);
 
     if (currentPath == '/splash') {
       return hasToken ? homepage : '/login';

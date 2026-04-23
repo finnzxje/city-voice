@@ -26,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ReportViewModel>().loadDashboard();
-      context.read<NotificationViewModel>().init();
+      context.read<NotificationViewModel>().initBadgeOnly();
     });
   }
 
@@ -36,8 +36,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _showCategoryFilterBottomSheet(
-      BuildContext context, ReportViewModel vm) {
+  Future<void> _showCategoryFilterBottomSheet(ReportViewModel vm) async {
+    if (vm.categories.isEmpty) {
+      await vm.loadCategories();
+      if (!mounted) {
+        return;
+      }
+    }
+
     final uniqueCategories = vm.categories.map((r) => r.name).toSet().toList()
       ..sort();
 
@@ -141,12 +147,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onRefresh: () async {
                 final notifVm = context.read<NotificationViewModel>();
                 await vm.refreshReports();
-                await notifVm.refresh(showLoading: false);
+                await notifVm.loadUnreadCount();
               },
               color: AppColors.primary,
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(child: _buildHeader(theme, authVm, vm)),
+                  SliverToBoxAdapter(child: _buildHeader(theme, authVm)),
                   SliverToBoxAdapter(child: _buildStatsGrid(vm)),
                   SliverToBoxAdapter(
                     child: _buildListHeader(theme, displayedReports.length, vm),
@@ -154,7 +160,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (vm.isLoading && vm.reports.isEmpty)
                     const SliverFillRemaining(
                       child: Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child:
+                            CircularProgressIndicator(color: AppColors.primary),
                       ),
                     )
                   else if (vm.errorMessage != null && vm.reports.isEmpty)
@@ -209,8 +216,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Header
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildHeader(
-      ThemeData theme, AuthViewModel authVm, ReportViewModel vm) {
+  Widget _buildHeader(ThemeData theme,
+      AuthViewModel authVm,) {
     final name = authVm.user?.fullName ?? 'Cư dân';
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
@@ -409,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -425,7 +432,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => _showCategoryFilterBottomSheet(context, vm),
+                onTap: () => _showCategoryFilterBottomSheet(vm),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -459,9 +466,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -496,7 +504,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.inbox_rounded,
-              size: 64, color: AppColors.textHint.withOpacity(0.5)),
+              size: 64, color: AppColors.textHint.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             (_selectedStatus != null || _selectedCategory != null)
