@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/app_cached_network_image.dart';
 import '../../../core/utils/utils.dart';
 import '../../reports/models/report.dart';
 import '../viewmodels/staff_workflow_view_model.dart';
@@ -139,11 +140,12 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      Utils.getSafeUrl(report.resolutionImageUrl),
+                    child: AppCachedNetworkImage(
+                      imageUrl: Utils.getSafeUrl(report.resolutionImageUrl),
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      memCacheWidth: 1200,
                     ),
                   ),
                 ),

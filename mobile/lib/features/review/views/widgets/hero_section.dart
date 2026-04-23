@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_cached_network_image.dart';
 import '../../../../core/utils/utils.dart';
 import '../../../reports/models/report.dart';
 
@@ -21,20 +22,16 @@ class HeroSection extends StatelessWidget {
         SizedBox(
           height: 280,
           width: double.infinity,
-          child: report.incidentImageUrl != null
-              ? Image.network(
-                  Utils.getSafeUrl(report.incidentImageUrl),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Container(color: const Color(0xFFE5E7EB)),
-                )
-              : Container(
-                  color: const Color(0xFFE5E7EB),
-                  child: const Center(
-                    child: Icon(Icons.image_not_supported_outlined,
-                        size: 48, color: Color(0xFF9CA3AF)),
-                  ),
-                ),
+          child: AppCachedNetworkImage(
+            imageUrl: Utils.getSafeUrl(report.incidentImageUrl),
+            width: double.infinity,
+            height: 280,
+            fit: BoxFit.cover,
+            memCacheWidth: 1200,
+            previewMemCacheWidth: 600,
+            placeholder: _buildImageFallback(),
+            errorWidget: _buildImageFallback(),
+          ),
         ),
         // Gradient overlay at bottom of image
         Positioned(
@@ -48,8 +45,8 @@ class HeroSection extends StatelessWidget {
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
                 colors: [
-                  const Color(0xFFF8F9FA).withOpacity(1.0),
-                  const Color(0xFFF8F9FA).withOpacity(0.0),
+                  const Color(0xFFF8F9FA).withValues(alpha: 1),
+                  const Color(0xFFF8F9FA).withValues(alpha: 0),
                 ],
               ),
             ),
@@ -88,7 +85,7 @@ class HeroSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -113,6 +110,19 @@ class HeroSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildImageFallback() {
+    return Container(
+      color: AppColors.surfaceVariant,
+      child: const Center(
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          size: 48,
+          color: AppColors.textHint,
+        ),
+      ),
     );
   }
 }

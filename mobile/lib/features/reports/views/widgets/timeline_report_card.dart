@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_cached_network_image.dart';
 import '../../../../core/utils/utils.dart';
 import '../../models/report.dart';
 
@@ -47,7 +50,7 @@ class TimelineReportCard extends StatelessWidget {
                 Positioned.fill(
                   child: CustomPaint(
                     painter: _DashedLinePainter(
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.blue.withValues(alpha: 0.2),
                       isLast: isLast,
                     ),
                   ),
@@ -87,6 +90,15 @@ class TimelineReportCard extends StatelessWidget {
                   const SizedBox(height: 12),
                 ],
                 GestureDetector(
+                  onTapDown: (_) {
+                    unawaited(
+                      precacheAppNetworkImage(
+                        context,
+                        Utils.getSafeUrl(report.incidentImageUrl),
+                        memCacheWidth: 1200,
+                      ),
+                    );
+                  },
                   onTap: () => context.push('/reports/${report.id}'),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 24),
@@ -95,7 +107,7 @@ class TimelineReportCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -110,16 +122,16 @@ class TimelineReportCard extends StatelessWidget {
                             ClipRRect(
                               borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(16)),
-                              child: report.incidentImageUrl != null
-                                  ? Image.network(
-                                      Utils.getSafeUrl(report.incidentImageUrl),
-                                      width: double.infinity,
-                                      height: 140,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          _buildPlaceholderImage(),
-                                    )
-                                  : _buildPlaceholderImage(),
+                              child: AppCachedNetworkImage(
+                                imageUrl:
+                                    Utils.getSafeUrl(report.incidentImageUrl),
+                                width: double.infinity,
+                                height: 140,
+                                fit: BoxFit.cover,
+                                memCacheWidth: 600,
+                                placeholder: _buildPlaceholderImage(),
+                                errorWidget: _buildPlaceholderImage(),
+                              ),
                             ),
                             // Status Badge
                             Positioned(
@@ -129,7 +141,7 @@ class TimelineReportCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: statusBg.withOpacity(0.9),
+                                  color: statusBg.withValues(alpha: 0.9),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -256,21 +268,20 @@ class TimelineReportCard extends StatelessWidget {
 class _DashedLinePainter extends CustomPainter {
   final Color color;
   final bool isLast;
+  late final Paint _paint = Paint()
+    ..color = color
+    ..strokeWidth = 1.5;
 
   _DashedLinePainter({required this.color, required this.isLast});
 
   @override
   void paint(Canvas canvas, Size size) {
     double dashHeight = 4, dashSpace = 4, startY = 16;
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5;
-
     final endY = isLast ? size.height - 40 : size.height;
 
     while (startY < endY) {
       canvas.drawLine(Offset(size.width / 2, startY),
-          Offset(size.width / 2, startY + dashHeight), paint);
+          Offset(size.width / 2, startY + dashHeight), _paint);
       startY += dashHeight + dashSpace;
     }
   }

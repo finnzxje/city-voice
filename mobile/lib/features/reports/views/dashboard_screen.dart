@@ -216,8 +216,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Header
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildHeader(ThemeData theme,
-      AuthViewModel authVm,) {
+  Widget _buildHeader(
+    ThemeData theme,
+    AuthViewModel authVm,
+  ) {
     final name = authVm.user?.fullName ?? 'Cư dân';
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),

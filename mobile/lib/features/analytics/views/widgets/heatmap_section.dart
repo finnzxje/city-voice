@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_map_tile_layer.dart';
 import '../../viewmodels/analytics_view_model.dart';
 
 /// Heatmap section with map overlay.
@@ -75,10 +76,7 @@ class HeatmapSection extends StatelessWidget {
         ),
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'vn.cityvoice.mobile',
-        ),
+        const AppMapTileLayer(),
         CircleLayer(
           circles: vm.heatmapPoints.map((pt) {
             return CircleMarker(

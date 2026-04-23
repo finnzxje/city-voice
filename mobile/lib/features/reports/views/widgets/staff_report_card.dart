@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_cached_network_image.dart';
 import '../../../../core/utils/utils.dart';
 import '../../models/report.dart';
 
@@ -25,7 +28,7 @@ class StaffHorizontalReportCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -36,6 +39,15 @@ class StaffHorizontalReportCard extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            onTapDown: (_) {
+              unawaited(
+                precacheAppNetworkImage(
+                  context,
+                  Utils.getSafeUrl(report.incidentImageUrl),
+                  memCacheWidth: 1200,
+                ),
+              );
+            },
             onTap: () => context.push('/staff-reports/${report.id}'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,15 +59,13 @@ class StaffHorizontalReportCard extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (report.incidentImageUrl != null)
-                        Image.network(
-                          Utils.getSafeUrl(report.incidentImageUrl),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _buildPlaceholderImage(),
-                        )
-                      else
-                        _buildPlaceholderImage(),
+                      AppCachedNetworkImage(
+                        imageUrl: Utils.getSafeUrl(report.incidentImageUrl),
+                        fit: BoxFit.cover,
+                        memCacheWidth: 600,
+                        placeholder: _buildPlaceholderImage(),
+                        errorWidget: _buildPlaceholderImage(),
+                      ),
 
                       // Priority Tag
                       if (report.priority != null)
@@ -67,7 +77,7 @@ class StaffHorizontalReportCard extends StatelessWidget {
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: AppColors.priorityColor(report.priority)
-                                  .withOpacity(0.9),
+                                  .withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(

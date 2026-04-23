@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_cached_network_image.dart';
+import '../../../../core/utils/app_map_tile_layer.dart';
 import '../../../../core/utils/utils.dart';
 import '../../models/report.dart';
 import '../widgets/timeline_step.dart';
@@ -120,14 +122,16 @@ class ReportDetailHeroImage extends StatelessWidget {
     return SizedBox(
       height: 280,
       width: double.infinity,
-      child: imageUrl != null
-          ? Image.network(
-              Utils.getSafeUrl(imageUrl),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const _ReportDetailPlaceholderHero(),
-            )
-          : const _ReportDetailPlaceholderHero(),
+      child: AppCachedNetworkImage(
+        imageUrl: Utils.getSafeUrl(imageUrl),
+        width: double.infinity,
+        height: 280,
+        fit: BoxFit.cover,
+        memCacheWidth: 1200,
+        previewMemCacheWidth: 600,
+        placeholder: const _ReportDetailPlaceholderHero(),
+        errorWidget: const _ReportDetailPlaceholderHero(),
+      ),
     );
   }
 }
@@ -230,11 +234,7 @@ class ReportDetailLocationCard extends StatelessWidget {
                   ),
                 ),
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.cityvoice',
-                  ),
+                  const AppMapTileLayer(),
                   MarkerLayer(
                     markers: [
                       Marker(
