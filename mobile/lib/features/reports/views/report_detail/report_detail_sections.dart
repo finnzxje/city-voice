@@ -328,6 +328,7 @@ class ReportDetailTimelineSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: items
           .map(
             (item) => TimelineStep(

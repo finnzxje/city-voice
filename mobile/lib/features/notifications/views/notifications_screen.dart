@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
 import '../../../core/theme/app_colors.dart';
 import '../models/notification_model.dart';
 import '../viewmodels/notification_view_model.dart';
@@ -83,6 +84,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemBuilder: (context, index) {
                 final notif = vm.notifications[index];
                 return _NotificationTile(
+                  key: ValueKey(notif.id),
                   notification: notif,
                   onTap: () => _onNotificationTap(context, vm, notif),
                 );
@@ -167,6 +169,7 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NotificationTile({
+    super.key,
     required this.notification,
     required this.onTap,
   });

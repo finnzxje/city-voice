@@ -89,98 +89,94 @@ class TimelineStep extends StatelessWidget {
             '${DateFormat('HH:mm').format(date!)}'
         : (fallbackSubtitle ?? '');
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Left: circle node + connector ──
-          SizedBox(
-            width: 40,
-            child: Column(
-              children: [
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: isCurrent
-                        ? Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: nodeBg.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: nodeBg,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(iconData,
-                                    size: iconSize, color: iconColor),
-                              ),
-                            ),
-                          )
-                        : Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: nodeBg,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(iconData,
-                                size: iconSize, color: iconColor),
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 40,
+          child: Column(
+            children: [
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: Center(
+                  child: isCurrent
+                      ? Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: nodeBg.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
                           ),
+                          child: Center(
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: nodeBg,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(iconData,
+                                  size: iconSize, color: iconColor),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: nodeBg,
+                            shape: BoxShape.circle,
+                          ),
+                          child:
+                              Icon(iconData, size: iconSize, color: iconColor),
+                        ),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      color: lineColor,
+                    ),
                   ),
                 ),
-                if (!isLast)
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        color: lineColor,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
-
-          // ── Right: title + subtitle ──
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 28.0, top: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: titleColor,
-                    ),
-                  ),
-                  if (displaySubtitle.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      displaySubtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subtitleColor,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ],
+        ),
+        const SizedBox(width: 40),
+        Padding(
+          padding: const EdgeInsets.only(left: 48, bottom: 28, top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: titleColor,
+                ),
               ),
-            ),
+              if (displaySubtitle.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  displaySubtitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: subtitleColor,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

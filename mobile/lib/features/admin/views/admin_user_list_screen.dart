@@ -164,6 +164,7 @@ class _AdminUserListScreenState extends State<AdminUserListScreen> {
                                 : '?';
 
                             return ListTile(
+                              key: ValueKey(user.id),
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 4),
                               leading: CircleAvatar(

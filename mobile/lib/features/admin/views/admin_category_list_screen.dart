@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../models/admin_category.dart';
 import '../models/upsert_category_request.dart';
@@ -88,6 +89,7 @@ class _AdminCategoryListScreenState extends State<AdminCategoryListScreen> {
               itemBuilder: (context, index) {
                 final cat = vm.categories[index];
                 return _CategoryListTile(
+                  key: ValueKey(cat.id),
                   category: cat,
                   onTap: () => _showCategoryForm(context, cat),
                   onToggle: (_) => _handleToggleCategory(context, vm, cat),
@@ -169,6 +171,7 @@ class _CategoryListTile extends StatelessWidget {
   final ValueChanged<bool> onToggle;
 
   const _CategoryListTile({
+    super.key,
     required this.category,
     required this.onTap,
     required this.onToggle,
