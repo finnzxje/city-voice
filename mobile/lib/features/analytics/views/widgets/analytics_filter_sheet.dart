@@ -115,7 +115,7 @@ class _AnalyticsFilterSheetState extends State<AnalyticsFilterSheet> {
                 )
               else
                 DropdownButtonFormField<int?>(
-                  value: _categoryId,
+                  initialValue: _categoryId,
                   decoration: const InputDecoration(
                     labelText: 'Danh mục',
                     border: OutlineInputBorder(),
@@ -136,7 +136,7 @@ class _AnalyticsFilterSheetState extends State<AnalyticsFilterSheet> {
 
               // Priority dropdown
               DropdownButtonFormField<String?>(
-                value: _priority,
+                initialValue: _priority,
                 decoration: const InputDecoration(
                   labelText: 'Mức độ ưu tiên',
                   border: OutlineInputBorder(),
@@ -220,24 +220,14 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      readOnly: true,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: 'YYYY-MM-DD',
-        border: const OutlineInputBorder(),
-        suffixIcon: value != null
-            ? IconButton(
-                icon: const Icon(Icons.clear, size: 18),
-                onPressed: () => onPicked(null),
-              )
-            : const Icon(Icons.calendar_today_outlined, size: 18),
-      ),
-      controller: TextEditingController(text: value ?? ''),
+    final hasValue = value != null && value!.isNotEmpty;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(4),
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
-          initialDate: value != null
+          initialDate: hasValue
               ? DateTime.tryParse(value!) ?? DateTime.now()
               : DateTime.now(),
           firstDate: DateTime(2020),
@@ -249,6 +239,26 @@ class _DateField extends StatelessWidget {
           onPicked(formatted);
         }
       },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: 'YYYY-MM-DD',
+          border: const OutlineInputBorder(),
+          suffixIcon: hasValue
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () => onPicked(null),
+                )
+              : const Icon(Icons.calendar_today_outlined, size: 18),
+        ),
+        isEmpty: !hasValue,
+        child: Text(
+          hasValue ? value! : 'YYYY-MM-DD',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: hasValue ? AppColors.textPrimary : AppColors.textHint,
+              ),
+        ),
+      ),
     );
   }
 }

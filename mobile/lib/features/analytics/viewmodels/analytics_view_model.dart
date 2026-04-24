@@ -17,6 +17,7 @@ enum AnalyticsViewState { idle, loading, success, error }
 /// ViewModel for the analytics dashboard (manager + admin).
 class AnalyticsViewModel extends ChangeNotifier {
   final AnalyticsService _service;
+  int _dashboardRequestId = 0;
 
   AnalyticsViewModel({required AnalyticsService service}) : _service = service;
 
@@ -74,10 +75,12 @@ class AnalyticsViewModel extends ChangeNotifier {
 
   /// Loads stats and heatmap concurrently using current [activeFilter].
   Future<void> loadDashboard({AnalyticsFilter? filter}) async {
+    final effectiveFilter = _copyFilter(filter ?? _activeFilter);
     if (filter != null) {
-      _activeFilter = filter;
+      _activeFilter = effectiveFilter;
     }
 
+    final requestId = ++_dashboardRequestId;
     _statsState = AnalyticsViewState.loading;
     _heatmapState = AnalyticsViewState.loading;
     _statsError = null;
@@ -86,43 +89,77 @@ class AnalyticsViewModel extends ChangeNotifier {
 
     // Run both fetches concurrently; handle failures independently.
     await Future.wait([
-      _loadStats(),
-      _loadHeatmap(),
+      _loadStats(requestId, effectiveFilter),
+      _loadHeatmap(requestId, effectiveFilter),
     ]);
   }
 
-  Future<void> _loadStats() async {
+  Future<void> _loadStats(int requestId, AnalyticsFilter filter) async {
     try {
-      _stats = await _service.getStats(_activeFilter);
+      final stats = await _service.getStats(filter);
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
+      _stats = stats;
       _statsState = AnalyticsViewState.success;
+      _statsError = null;
     } on DioException catch (e) {
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
       _statsError = ApiErrorMessageResolver.fromDioException(
         e,
         fallback: 'Lỗi kết nối',
       );
       _statsState = AnalyticsViewState.error;
     } catch (e) {
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
       _statsError = e.toString();
       _statsState = AnalyticsViewState.error;
     }
-    notifyListeners();
+
+    if (_isCurrentDashboardRequest(requestId)) {
+      notifyListeners();
+    }
   }
 
-  Future<void> _loadHeatmap() async {
+  Future<void> _loadHeatmap(int requestId, AnalyticsFilter filter) async {
     try {
-      _heatmapPoints = await _service.getHeatmap(_activeFilter);
+      final heatmapPoints = await _service.getHeatmap(filter);
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
+      _heatmapPoints = heatmapPoints;
       _heatmapState = AnalyticsViewState.success;
+      _heatmapError = null;
     } on DioException catch (e) {
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
       _heatmapError = ApiErrorMessageResolver.fromDioException(
         e,
         fallback: 'Lỗi kết nối',
       );
       _heatmapState = AnalyticsViewState.error;
     } catch (e) {
+      if (!_isCurrentDashboardRequest(requestId)) {
+        return;
+      }
+
       _heatmapError = e.toString();
       _heatmapState = AnalyticsViewState.error;
     }
-    notifyListeners();
+
+    if (_isCurrentDashboardRequest(requestId)) {
+      notifyListeners();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -201,4 +238,17 @@ class AnalyticsViewModel extends ChangeNotifier {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+  bool _isCurrentDashboardRequest(int requestId) {
+    return requestId == _dashboardRequestId;
+  }
+
+  AnalyticsFilter _copyFilter(AnalyticsFilter filter) {
+    return AnalyticsFilter(
+      from: filter.from,
+      to: filter.to,
+      categoryId: filter.categoryId,
+      zoneId: filter.zoneId,
+      priority: filter.priority,
+    );
+  }
 }

@@ -89,28 +89,30 @@ class HeatmapSection extends StatelessWidget {
 
     const center = LatLng(10.7769, 106.7009);
 
-    return FlutterMap(
-      options: const MapOptions(
-        initialCenter: center,
-        initialZoom: 11,
-        interactionOptions: InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+    return RepaintBoundary(
+      child: FlutterMap(
+        options: const MapOptions(
+          initialCenter: center,
+          initialZoom: 11,
+          interactionOptions: InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          ),
         ),
+        children: [
+          const AppMapTileLayer(),
+          CircleLayer(
+            circles: [
+              for (final point in heatmapPoints)
+                CircleMarker(
+                  point: LatLng(point.latitude, point.longitude),
+                  radius: 12,
+                  color: _priorityColor(point.priority),
+                  borderStrokeWidth: 0,
+                ),
+            ],
+          ),
+        ],
       ),
-      children: [
-        const AppMapTileLayer(),
-        CircleLayer(
-          circles: [
-            for (final point in heatmapPoints)
-              CircleMarker(
-                point: LatLng(point.latitude, point.longitude),
-                radius: 12,
-                color: _priorityColor(point.priority),
-                borderStrokeWidth: 0,
-              ),
-          ],
-        ),
-      ],
     );
   }
 
