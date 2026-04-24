@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../viewmodels/staff_workflow_view_model.dart';
+import 'review_action_bottom_sheet_layout.dart';
 
 /// Bottom sheet for rejecting a report.
 class RejectBottomSheet extends StatefulWidget {
@@ -53,28 +54,12 @@ class _RejectBottomSheetState extends State<RejectBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return ReviewActionBottomSheetLayout(
+      title: 'Từ chối báo cáo',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Từ chối báo cáo',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop()),
-            ],
-          ),
-          const SizedBox(height: 20),
           const Text('Lý do từ chối *',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
