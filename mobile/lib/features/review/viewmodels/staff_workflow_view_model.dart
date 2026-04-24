@@ -15,6 +15,7 @@ import '../services/staff_report_service.dart';
 class StaffWorkflowViewModel extends ChangeNotifier {
   final StaffReportService _service;
   final CategoryService _categoryService;
+  int _reportsRequestId = 0;
 
   StaffWorkflowViewModel({
     required StaffReportService service,
@@ -92,6 +93,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
 
   /// Loads reports with the current filters + page applied via API query params.
   Future<void> loadReports({int page = 0}) async {
+    final requestId = ++_reportsRequestId;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -104,16 +106,30 @@ class StaffWorkflowViewModel extends ChangeNotifier {
         page: page,
         size: pageSize,
       );
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _reports = result.reports;
       _currentPage = result.currentPage;
       _totalPages = result.totalPages;
     } on DioException catch (e) {
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _errorMessage = ApiErrorMessageResolver.fromDioException(e);
     } catch (e) {
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_isCurrentReportsRequest(requestId)) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -288,7 +304,6 @@ class StaffWorkflowViewModel extends ChangeNotifier {
     if (index >= 0) {
       _reports = List<Report>.from(_reports)..[index] = updated;
     }
-    notifyListeners();
   }
 
   Report? _reportFromCache(String reportId) {
@@ -299,5 +314,9 @@ class StaffWorkflowViewModel extends ChangeNotifier {
     }
 
     return null;
+  }
+
+  bool _isCurrentReportsRequest(int requestId) {
+    return requestId == _reportsRequestId;
   }
 }

@@ -8,10 +8,25 @@ import 'package:provider/provider.dart';
 import '../../../core/auth/user_role.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
+import '../../reports/models/incident_category.dart';
+import '../../reports/models/report.dart';
 import '../../review/viewmodels/staff_workflow_view_model.dart';
 import 'staff_dashboard/staff_dashboard_presenter.dart';
 import 'widgets/staff_filter_widgets.dart';
 import 'widgets/staff_report_card.dart';
+
+typedef _StaffDashboardViewState = ({
+  List<Report> reports,
+  bool isLoading,
+  String? errorMessage,
+  int currentPage,
+  int totalPages,
+  bool hasActiveFilters,
+  String? statusFilter,
+  String? priorityFilter,
+  int? categoryIdFilter,
+  List<IncidentCategory> categories,
+});
 
 /// Dashboard for staff / manager / admin roles.
 class StaffDashboardScreen extends StatefulWidget {
@@ -73,25 +88,27 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     });
   }
 
-  StaffDashboardPresenter _presenterFor(StaffWorkflowViewModel viewModel) {
+  StaffDashboardPresenter _presenterFor({
+    required List<Report> reports,
+    required bool hasRemoteFilters,
+  }) {
     final cachedPresenter = _presenterCache;
-    final hasRemoteFilters = viewModel.hasActiveFilters;
 
     if (cachedPresenter != null &&
-        identical(_presenterReportsIdentity, viewModel.reports) &&
+        identical(_presenterReportsIdentity, reports) &&
         _presenterFilters == _localFilters &&
         _presenterHasRemoteFilters == hasRemoteFilters) {
       return cachedPresenter;
     }
 
     final presenter = StaffDashboardPresenter(
-      reports: viewModel.reports,
+      reports: reports,
       localFilters: _localFilters,
       hasRemoteFilters: hasRemoteFilters,
     );
 
     _presenterCache = presenter;
-    _presenterReportsIdentity = viewModel.reports;
+    _presenterReportsIdentity = reports;
     _presenterFilters = _localFilters;
     _presenterHasRemoteFilters = hasRemoteFilters;
 
@@ -168,124 +185,154 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewModel = context.read<StaffWorkflowViewModel>();
     final staffName = context.select<AuthViewModel, String>(
       (vm) => vm.user?.fullName ?? 'Nhân viên',
     );
     final roleName = context.select<AuthViewModel, String>(
       (vm) => (vm.user?.role ?? UserRole.staff).staffDashboardBadgeLabel,
     );
+    final viewState =
+        context.select<StaffWorkflowViewModel, _StaffDashboardViewState>(
+      (vm) => (
+        reports: vm.reports,
+        isLoading: vm.isLoading,
+        errorMessage: vm.errorMessage,
+        currentPage: vm.currentPage,
+        totalPages: vm.totalPages,
+        hasActiveFilters: vm.hasActiveFilters,
+        statusFilter: vm.statusFilter,
+        priorityFilter: vm.priorityFilter,
+        categoryIdFilter: vm.categoryIdFilter,
+        categories: vm.categories,
+      ),
+    );
+    final presenter = _presenterFor(
+      reports: viewState.reports,
+      hasRemoteFilters: viewState.hasActiveFilters,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: Consumer<StaffWorkflowViewModel>(
-          builder: (context, viewModel, _) {
-            final presenter = _presenterFor(viewModel);
-
-            return RefreshIndicator(
-              onRefresh: () =>
-                  viewModel.loadReports(page: viewModel.currentPage),
-              color: AppColors.primary,
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: _buildHeader(theme, staffName, roleName),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _buildFilterSection(viewModel, presenter),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Danh sách báo cáo',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF111827),
-                            ),
-                          ),
-                          Text(
-                            'Trang ${viewModel.currentPage + 1}/${viewModel.totalPages > 0 ? viewModel.totalPages : 1}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (viewModel.isLoading && viewModel.reports.isEmpty)
-                    const SliverFillRemaining(
-                      child: Center(
-                        child:
-                            CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                    )
-                  else if (viewModel.errorMessage != null &&
-                      viewModel.reports.isEmpty)
-                    SliverFillRemaining(
-                      child: _buildErrorState(theme, viewModel),
-                    )
-                  else if (presenter.filteredReports.isEmpty)
-                    SliverFillRemaining(
-                      child: _buildEmptyState(theme, viewModel, presenter),
-                    )
-                  else
-                    SliverList.builder(
-                      itemCount: presenter.dateGroups.length,
-                      itemBuilder: (context, index) {
-                        final dateGroup = presenter.dateGroups[index];
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildDateHeader(dateGroup.header),
-                            SizedBox(
-                              height: 330,
-                              child: ListView.separated(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                scrollDirection: Axis.horizontal,
-                                itemCount: dateGroup.reports.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 16),
-                                itemBuilder: (context, cardIndex) {
-                                  return StaffHorizontalReportCard(
-                                    key: ValueKey(
-                                      dateGroup.reports[cardIndex].id,
-                                    ),
-                                    report: dateGroup.reports[cardIndex],
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                        );
-                      },
-                    ),
-                  if (viewModel.totalPages > 1)
-                    SliverToBoxAdapter(
-                      child: _buildPaginationBar(viewModel),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
-                ],
+        child: RefreshIndicator(
+          onRefresh: () => viewModel.loadReports(page: viewState.currentPage),
+          color: AppColors.primary,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildHeader(theme, staffName, roleName),
               ),
-            );
-          },
+              SliverToBoxAdapter(
+                child: _buildFilterSection(
+                  presenter: presenter,
+                  viewModel: viewModel,
+                  statusFilter: viewState.statusFilter,
+                  priorityFilter: viewState.priorityFilter,
+                  categoryIdFilter: viewState.categoryIdFilter,
+                  categories: viewState.categories,
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Danh sách báo cáo',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                      Text(
+                        'Trang ${viewState.currentPage + 1}/${viewState.totalPages > 0 ? viewState.totalPages : 1}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (viewState.isLoading && viewState.reports.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                )
+              else if (viewState.errorMessage != null &&
+                  viewState.reports.isEmpty)
+                SliverFillRemaining(
+                  child: _buildErrorState(
+                    theme,
+                    viewState.errorMessage!,
+                    onRetry: viewModel.loadReports,
+                  ),
+                )
+              else if (presenter.filteredReports.isEmpty)
+                SliverFillRemaining(
+                  child: _buildEmptyState(theme, viewModel, presenter),
+                )
+              else
+                SliverList.builder(
+                  itemCount: presenter.dateGroups.length,
+                  itemBuilder: (context, index) {
+                    final dateGroup = presenter.dateGroups[index];
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDateHeader(dateGroup.header),
+                        SizedBox(
+                          height: 330,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: dateGroup.reports.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 16),
+                            itemBuilder: (context, cardIndex) {
+                              return StaffHorizontalReportCard(
+                                key: ValueKey(
+                                  dateGroup.reports[cardIndex].id,
+                                ),
+                                report: dateGroup.reports[cardIndex],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                ),
+              if (viewState.totalPages > 1)
+                SliverToBoxAdapter(
+                  child: _buildPaginationBar(
+                    viewModel: viewModel,
+                    currentPage: viewState.currentPage,
+                    totalPages: viewState.totalPages,
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildFilterSection(
-    StaffWorkflowViewModel viewModel,
-    StaffDashboardPresenter presenter,
-  ) {
+  Widget _buildFilterSection({
+    required StaffWorkflowViewModel viewModel,
+    required StaffDashboardPresenter presenter,
+    required String? statusFilter,
+    required String? priorityFilter,
+    required int? categoryIdFilter,
+    required List<IncidentCategory> categories,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Column(
@@ -307,7 +354,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               Expanded(
                 child: FilterDropdown<String>(
                   label: 'Trạng thái',
-                  value: viewModel.statusFilter,
+                  value: statusFilter,
                   items: const [
                     DropdownMenuItem(
                       value: 'newly_received',
@@ -333,7 +380,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               Expanded(
                 child: FilterDropdown<String>(
                   label: 'Ưu tiên',
-                  value: viewModel.priorityFilter,
+                  value: priorityFilter,
                   items: const [
                     DropdownMenuItem(value: 'low', child: Text('Thấp')),
                     DropdownMenuItem(
@@ -357,8 +404,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               Expanded(
                 child: FilterDropdown<int>(
                   label: 'Danh mục',
-                  value: viewModel.categoryIdFilter,
-                  items: viewModel.categories
+                  value: categoryIdFilter,
+                  items: categories
                       .map(
                         (category) => DropdownMenuItem<int>(
                           value: category.id,
@@ -576,7 +623,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     );
   }
 
-  Widget _buildPaginationBar(StaffWorkflowViewModel viewModel) {
+  Widget _buildPaginationBar({
+    required StaffWorkflowViewModel viewModel,
+    required int currentPage,
+    required int totalPages,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
@@ -584,19 +635,19 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         children: [
           PaginationButton(
             icon: Icons.chevron_left_rounded,
-            enabled: viewModel.currentPage > 0,
-            onTap: () => viewModel.goToPage(viewModel.currentPage - 1),
+            enabled: currentPage > 0,
+            onTap: () => viewModel.goToPage(currentPage - 1),
           ),
           const SizedBox(width: 8),
           ...List.generate(
-            viewModel.totalPages > 5 ? 5 : viewModel.totalPages,
+            totalPages > 5 ? 5 : totalPages,
             (index) {
               final page = _pageNumberForIndex(
                 index,
-                viewModel.currentPage,
-                viewModel.totalPages,
+                currentPage,
+                totalPages,
               );
-              final isActive = page == viewModel.currentPage;
+              final isActive = page == currentPage;
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3),
@@ -629,8 +680,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           const SizedBox(width: 8),
           PaginationButton(
             icon: Icons.chevron_right_rounded,
-            enabled: viewModel.currentPage < viewModel.totalPages - 1,
-            onTap: () => viewModel.goToPage(viewModel.currentPage + 1),
+            enabled: currentPage < totalPages - 1,
+            onTap: () => viewModel.goToPage(currentPage + 1),
           ),
         ],
       ),
@@ -682,8 +733,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
   Widget _buildErrorState(
     ThemeData theme,
-    StaffWorkflowViewModel viewModel,
-  ) {
+    String errorMessage, {
+    required Future<void> Function() onRetry,
+  }) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -695,7 +747,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            viewModel.errorMessage!,
+            errorMessage,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.error,
             ),
@@ -703,7 +755,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () => viewModel.loadReports(),
+            onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Thử lại'),
           ),
