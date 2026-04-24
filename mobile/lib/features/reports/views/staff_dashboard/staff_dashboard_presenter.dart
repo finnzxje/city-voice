@@ -28,6 +28,20 @@ final class StaffDashboardLocalFilters {
           : selectedDate as DateTime?,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    return other is StaffDashboardLocalFilters &&
+        other.searchQuery == searchQuery &&
+        other.selectedDate == selectedDate;
+  }
+
+  @override
+  int get hashCode => Object.hash(searchQuery, selectedDate);
 }
 
 final class StaffDashboardPresenter {
@@ -43,12 +57,16 @@ final class StaffDashboardPresenter {
   final StaffDashboardLocalFilters localFilters;
   final bool hasRemoteFilters;
   final DateTime _now;
+  late final List<Report> _filteredReportsCache =
+      _reports.where(_matchesFilters).toList(growable: false);
+  late final List<StaffDashboardDateGroup> _dateGroupsCache =
+      _buildDateGroups();
 
-  List<Report> get filteredReports {
-    return _reports.where(_matchesFilters).toList();
-  }
+  List<Report> get filteredReports => _filteredReportsCache;
 
-  List<StaffDashboardDateGroup> get dateGroups {
+  List<StaffDashboardDateGroup> get dateGroups => _dateGroupsCache;
+
+  List<StaffDashboardDateGroup> _buildDateGroups() {
     final groupedReports = <DateTime, List<Report>>{};
     for (final report in filteredReports) {
       final date = DateUtils.dateOnly(report.createdAt);

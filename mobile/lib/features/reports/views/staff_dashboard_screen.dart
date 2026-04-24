@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -20,8 +22,16 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 300);
+
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  String _searchInput = '';
   StaffDashboardLocalFilters _localFilters = const StaffDashboardLocalFilters();
+  StaffDashboardPresenter? _presenterCache;
+  Object? _presenterReportsIdentity;
+  StaffDashboardLocalFilters? _presenterFilters;
+  bool? _presenterHasRemoteFilters;
 
   @override
   void initState() {
@@ -35,14 +45,57 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _setSearchQuery(String value) {
-    setState(() {
-      _localFilters = _localFilters.copyWith(searchQuery: value);
+    if (value != _searchInput) {
+      setState(() {
+        _searchInput = value;
+      });
+    }
+
+    _searchDebounce?.cancel();
+    if (value == _localFilters.searchQuery) {
+      return;
+    }
+
+    _searchDebounce = Timer(_searchDebounceDuration, () {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _localFilters = _localFilters.copyWith(searchQuery: value);
+      });
     });
+  }
+
+  StaffDashboardPresenter _presenterFor(StaffWorkflowViewModel viewModel) {
+    final cachedPresenter = _presenterCache;
+    final hasRemoteFilters = viewModel.hasActiveFilters;
+
+    if (cachedPresenter != null &&
+        identical(_presenterReportsIdentity, viewModel.reports) &&
+        _presenterFilters == _localFilters &&
+        _presenterHasRemoteFilters == hasRemoteFilters) {
+      return cachedPresenter;
+    }
+
+    final presenter = StaffDashboardPresenter(
+      reports: viewModel.reports,
+      localFilters: _localFilters,
+      hasRemoteFilters: hasRemoteFilters,
+    );
+
+    _presenterCache = presenter;
+    _presenterReportsIdentity = viewModel.reports;
+    _presenterFilters = _localFilters;
+    _presenterHasRemoteFilters = hasRemoteFilters;
+
+    return presenter;
   }
 
   void _setSelectedDate(DateTime? value) {
@@ -52,8 +105,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   void _clearLocalFilters() {
+    _searchDebounce?.cancel();
     setState(() {
       _searchController.clear();
+      _searchInput = '';
       _localFilters = const StaffDashboardLocalFilters();
     });
   }
@@ -113,20 +168,19 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authViewModel = context.watch<AuthViewModel>();
-    final roleName =
-        (authViewModel.user?.role ?? UserRole.staff).staffDashboardBadgeLabel;
+    final staffName = context.select<AuthViewModel, String>(
+      (vm) => vm.user?.fullName ?? 'Nhân viên',
+    );
+    final roleName = context.select<AuthViewModel, String>(
+      (vm) => (vm.user?.role ?? UserRole.staff).staffDashboardBadgeLabel,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: Consumer<StaffWorkflowViewModel>(
           builder: (context, viewModel, _) {
-            final presenter = StaffDashboardPresenter(
-              reports: viewModel.reports,
-              localFilters: _localFilters,
-              hasRemoteFilters: viewModel.hasActiveFilters,
-            );
+            final presenter = _presenterFor(viewModel);
 
             return RefreshIndicator(
               onRefresh: () =>
@@ -135,7 +189,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
-                    child: _buildHeader(theme, authViewModel, roleName),
+                    child: _buildHeader(theme, staffName, roleName),
                   ),
                   SliverToBoxAdapter(
                     child: _buildFilterSection(viewModel, presenter),
@@ -201,6 +255,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                                     const SizedBox(width: 16),
                                 itemBuilder: (context, cardIndex) {
                                   return StaffHorizontalReportCard(
+                                    key: ValueKey(
+                                      dateGroup.reports[cardIndex].id,
+                                    ),
                                     report: dateGroup.reports[cardIndex],
                                   );
                                 },
@@ -326,7 +383,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   Widget _buildSearchBar() {
-    final searchQuery = _localFilters.searchQuery;
+    final searchQuery = _searchInput;
 
     return Container(
       height: 48,
@@ -467,11 +524,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
   Widget _buildHeader(
     ThemeData theme,
-    AuthViewModel authViewModel,
+    String staffName,
     String roleName,
   ) {
-    final name = authViewModel.user?.fullName ?? 'Nhân viên';
-
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
       child: Row(
@@ -498,7 +553,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  name,
+                  staffName,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),

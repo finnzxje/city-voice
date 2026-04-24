@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../models/stats_model.dart';
 import '../../viewmodels/analytics_view_model.dart';
 
 /// Row of three score cards.
 class ScorecardsRow extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const ScorecardsRow({super.key, required this.vm});
+  const ScorecardsRow({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (vm.statsState == AnalyticsViewState.loading && vm.stats == null) {
+    final state = context.select<AnalyticsViewModel,
+        ({AnalyticsViewState statsState, StatsModel? stats})>(
+      (vm) => (
+        statsState: vm.statsState,
+        stats: vm.stats,
+      ),
+    );
+
+    if (state.statsState == AnalyticsViewState.loading && state.stats == null) {
       return Row(
         children: [
           Expanded(child: _buildSingleShimmer()),
@@ -24,8 +32,10 @@ class ScorecardsRow extends StatelessWidget {
       );
     }
 
-    final stats = vm.stats;
-    if (stats == null) return const SizedBox.shrink();
+    final stats = state.stats;
+    if (stats == null) {
+      return const SizedBox.shrink();
+    }
 
     return Row(
       children: [

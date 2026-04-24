@@ -34,6 +34,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userRole = context.select<AuthViewModel, UserRole?>(
+      (vm) => vm.user?.role,
+    );
+    final hasActiveFilters = context.select<AnalyticsViewModel, bool>(
+      (vm) => vm.activeFilter.hasActiveFilters,
+    );
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -42,7 +49,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0.5,
-        leading: context.read<AuthViewModel>().user?.role == UserRole.manager
+        leading: userRole == UserRole.manager
             ? IconButton(
                 icon: const Icon(Icons.logout_rounded),
                 tooltip: 'Đăng xuất',
@@ -54,59 +61,51 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               )
             : null,
         actions: [
-          Consumer<AnalyticsViewModel>(
-            builder: (context, vm, _) {
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.filter_alt_outlined),
-                    tooltip: 'Bộ lọc',
-                    onPressed: () => _showFilterSheet(context),
-                  ),
-                  if (vm.activeFilter.hasActiveFilters)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.filter_alt_outlined),
+                tooltip: 'Bộ lọc',
+                onPressed: () => _showFilterSheet(context),
+              ),
+              if (hasActiveFilters)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
                     ),
-                ],
-              );
-            },
+                  ),
+                ),
+            ],
           ),
         ],
       ),
-      body: Consumer<AnalyticsViewModel>(
-        builder: (context, vm, _) {
-          return RefreshIndicator(
-            onRefresh: vm.loadDashboard,
-            color: AppColors.primary,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ScorecardsRow(vm: vm),
-                  const SizedBox(height: 20),
-                  StatusBreakdown(vm: vm),
-                  const SizedBox(height: 24),
-                  ChartsSection(vm: vm),
-                  const SizedBox(height: 24),
-                  HeatmapSection(vm: vm),
-                  const SizedBox(height: 24),
-                  ExportSection(vm: vm),
-                ],
-              ),
-            ),
-          );
-        },
+      body: RefreshIndicator(
+        onRefresh: () => context.read<AnalyticsViewModel>().loadDashboard(),
+        color: AppColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ScorecardsRow(),
+              SizedBox(height: 20),
+              StatusBreakdown(),
+              SizedBox(height: 24),
+              ChartsSection(),
+              SizedBox(height: 24),
+              HeatmapSection(),
+              SizedBox(height: 24),
+              ExportSection(),
+            ],
+          ),
+        ),
       ),
     );
   }

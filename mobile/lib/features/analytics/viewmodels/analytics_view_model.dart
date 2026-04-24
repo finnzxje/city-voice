@@ -73,7 +73,11 @@ class AnalyticsViewModel extends ChangeNotifier {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Loads stats and heatmap concurrently using current [activeFilter].
-  Future<void> loadDashboard() async {
+  Future<void> loadDashboard({AnalyticsFilter? filter}) async {
+    if (filter != null) {
+      _activeFilter = filter;
+    }
+
     _statsState = AnalyticsViewState.loading;
     _heatmapState = AnalyticsViewState.loading;
     _statsError = null;
@@ -126,18 +130,11 @@ class AnalyticsViewModel extends ChangeNotifier {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Replaces the active filter and reloads the dashboard.
-  Future<void> applyFilter(AnalyticsFilter newFilter) async {
-    _activeFilter = newFilter;
-    notifyListeners();
-    await loadDashboard();
-  }
+  Future<void> applyFilter(AnalyticsFilter newFilter) =>
+      loadDashboard(filter: newFilter);
 
   /// Resets filters to defaults and reloads.
-  Future<void> resetFilter() async {
-    _activeFilter = AnalyticsFilter();
-    notifyListeners();
-    await loadDashboard();
-  }
+  Future<void> resetFilter() => loadDashboard(filter: AnalyticsFilter());
 
   // ═══════════════════════════════════════════════════════════════════════════
   // EXPORT

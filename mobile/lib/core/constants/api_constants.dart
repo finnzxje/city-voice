@@ -1,11 +1,5 @@
 /// Centralised API configuration and endpoint paths.
-///
-/// All paths are relative to [baseUrl]. The [baseUrl] defaults to
-/// `http://10.0.2.2:8080/api` which routes to the host machine's
-/// `localhost:8080` when running inside the Android emulator.
-///
-/// For physical device testing, change [baseUrl] to your machine's
-/// LAN IP, e.g. `http://192.168.1.X:8080/api`.
+
 library;
 
 class ApiConstants {
@@ -14,8 +8,6 @@ class ApiConstants {
   static const String localhost = 'http://10.251.0.144';
 
   // ── Base URL ───────────────────────────────────────────────────────────────
-  /// Default base URL for the CityVoice Spring Boot backend.
-  /// Override via environment variable or a settings screen in the future.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '$localhost:8080/api',

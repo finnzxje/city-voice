@@ -15,7 +15,7 @@ const _reportDetailActionBlue = Color(0xFF1D4ED8);
 const _reportDetailSurfaceTint = Color(0xFFEFF6FF);
 const _reportDetailPlaceholderColor = Color(0xFF94A3B8);
 
-class ReportDetailBody extends StatelessWidget {
+class ReportDetailBody extends StatefulWidget {
   const ReportDetailBody({
     super.key,
     required this.report,
@@ -26,14 +26,36 @@ class ReportDetailBody extends StatelessWidget {
   final VoidCallback onEnableNotifications;
 
   @override
+  State<ReportDetailBody> createState() => _ReportDetailBodyState();
+}
+
+class _ReportDetailBodyState extends State<ReportDetailBody> {
+  late ReportDetailPresenter _presenter;
+
+  @override
+  void initState() {
+    super.initState();
+    _presenter = ReportDetailPresenter(widget.report);
+  }
+
+  @override
+  void didUpdateWidget(covariant ReportDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!identical(oldWidget.report, widget.report)) {
+      _presenter = ReportDetailPresenter(widget.report);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final presenter = ReportDetailPresenter(report);
+    final presenter = _presenter;
 
     return ListView(
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
-        ReportDetailHeroImage(report: report),
+        ReportDetailHeroImage(report: widget.report),
         Transform.translate(
           offset: const Offset(0, -24),
           child: Container(
@@ -47,7 +69,7 @@ class ReportDetailBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  report.title,
+                  widget.report.title,
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
@@ -70,7 +92,7 @@ class ReportDetailBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ReportDetailLocationCard(
-                  report: report,
+                  report: widget.report,
                   presenter: presenter,
                 ),
                 const SizedBox(height: 32),
@@ -85,7 +107,7 @@ class ReportDetailBody extends StatelessWidget {
                 ReportDetailTimelineSection(items: presenter.timelineItems),
                 const SizedBox(height: 32),
                 ReportDetailNotificationButton(
-                  onPressed: onEnableNotifications,
+                  onPressed: widget.onEnableNotifications,
                 ),
                 const SizedBox(height: 12),
                 Center(
