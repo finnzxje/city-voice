@@ -49,7 +49,13 @@ class NotificationModel {
   }
 
   static DateTime? _parseDate(dynamic v) {
-    if (v is String) return DateTime.tryParse(v);
+    if (v is String) {
+      final parsed = DateTime.tryParse(v);
+      if (parsed == null) {
+        return null;
+      }
+      return parsed.isUtc ? parsed.toLocal() : parsed;
+    }
     return null;
   }
 }

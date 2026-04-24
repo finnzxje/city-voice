@@ -40,7 +40,7 @@ class StatusStatCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: iconColor.withOpacity(0.2),
+                    color: iconColor.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

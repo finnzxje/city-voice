@@ -71,7 +71,13 @@ class Report {
   /// Parses ISO 8601 / OffsetDateTime strings from the backend.
   static DateTime? _parseDateTime(dynamic value) {
     if (value == null) return null;
-    if (value is String) return DateTime.tryParse(value);
+    if (value is String) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed == null) {
+        return null;
+      }
+      return parsed.isUtc ? parsed.toLocal() : parsed;
+    }
     return null;
   }
 

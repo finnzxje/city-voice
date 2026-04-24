@@ -93,10 +93,11 @@ class StaffActionBar extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.12),
+                  color: AppColors.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppColors.warning.withOpacity(0.25)),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.25),
+                  ),
                 ),
                 child: const Row(
                   children: [
@@ -167,7 +168,9 @@ class _StatusBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: bgColor,
-          border: Border(top: BorderSide(color: color.withOpacity(0.3))),
+          border: Border(
+            top: BorderSide(color: color.withValues(alpha: 0.3)),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
