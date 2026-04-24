@@ -150,7 +150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onRefresh: () async {
             final notificationViewModel = context.read<NotificationViewModel>();
             await reportViewModel.refreshReports();
-            await notificationViewModel.loadUnreadCount();
+            await notificationViewModel.loadUnreadCount(forceRemote: true);
           },
           color: AppColors.primary,
           child: CustomScrollView(

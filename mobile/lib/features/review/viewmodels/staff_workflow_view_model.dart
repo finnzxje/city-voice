@@ -158,26 +158,23 @@ class StaffWorkflowViewModel extends ChangeNotifier {
 
   /// Loads a single report detail.
   Future<void> loadReportDetail(String reportId) async {
+    final cachedReport = _reportFromCache(reportId);
+
     _isLoading = true;
     _errorMessage = null;
-    _selectedReport = null;
+    _selectedReport = cachedReport;
     notifyListeners();
 
     try {
-      // Find in cached list first
-      final cached = _reports.where((r) => r.id == reportId).toList();
-      if (cached.isNotEmpty) {
-        _selectedReport = cached.first;
-      } else {
-        // Fallback: fetch all and find
-        final result = await _service.getReports(size: 100);
-        _selectedReport =
-            result.reports.where((r) => r.id == reportId).firstOrNull;
-      }
+      final detail = await _service.getReportById(reportId);
+      _replaceReport(detail);
+      _selectedReport = detail;
     } on DioException catch (e) {
       _errorMessage = ApiErrorMessageResolver.fromDioException(e);
+      _selectedReport = cachedReport;
     } catch (e) {
       _errorMessage = e.toString();
+      _selectedReport = cachedReport;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -292,5 +289,15 @@ class StaffWorkflowViewModel extends ChangeNotifier {
       _reports = List<Report>.from(_reports)..[index] = updated;
     }
     notifyListeners();
+  }
+
+  Report? _reportFromCache(String reportId) {
+    for (final report in _reports) {
+      if (report.id == reportId) {
+        return report;
+      }
+    }
+
+    return null;
   }
 }

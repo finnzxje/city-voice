@@ -15,12 +15,22 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  NotificationViewModel? _viewModel;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationViewModel>().init();
+      final viewModel = context.read<NotificationViewModel>();
+      _viewModel = viewModel;
+      viewModel.init();
     });
+  }
+
+  @override
+  void dispose() {
+    _viewModel?.useBadgeOnlyPolling();
+    super.dispose();
   }
 
   @override
@@ -71,7 +81,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => vm.refresh(showLoading: false),
+            onRefresh: () => vm.loadNotifications(showLoading: false),
             color: AppColors.primary,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),

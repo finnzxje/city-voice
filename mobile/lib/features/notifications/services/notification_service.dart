@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_response.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
+  static const int _defaultMarkAsReadChunkSize = 8;
+
   final Dio _dio;
 
   NotificationService({required Dio dio}) : _dio = dio;
@@ -57,5 +60,22 @@ class NotificationService {
 
   Future<void> markAsRead(String id) async {
     await _dio.put(ApiConstants.markNotificationRead(id));
+  }
+
+  Future<void> markAllAsRead(
+    List<String> notificationIds, {
+    int chunkSize = _defaultMarkAsReadChunkSize,
+  }) async {
+    if (notificationIds.isEmpty) {
+      return;
+    }
+
+    for (var start = 0; start < notificationIds.length; start += chunkSize) {
+      final end = start + chunkSize < notificationIds.length
+          ? start + chunkSize
+          : notificationIds.length;
+      final chunk = notificationIds.sublist(start, end);
+      await Future.wait(chunk.map(markAsRead));
+    }
   }
 }
