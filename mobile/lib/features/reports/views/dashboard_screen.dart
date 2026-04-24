@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -18,14 +20,20 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  static const int _visibleReportBatchSize = 20;
+
   String? _selectedStatus;
   String? _selectedCategory;
+  int _visibleReportCount = _visibleReportBatchSize;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ReportViewModel>().loadDashboard();
+      final authViewModel = context.read<AuthViewModel>();
+      context.read<ReportViewModel>().loadDashboard(
+            ownerId: authViewModel.user?.id,
+          );
       context.read<NotificationViewModel>().initBadgeOnly();
     });
   }
@@ -33,6 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onStatusFilterTapped(String status) {
     setState(() {
       _selectedStatus = _selectedStatus == status ? null : status;
+      _visibleReportCount = _visibleReportBatchSize;
     });
   }
 
@@ -105,7 +114,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: AppColors.primary)
                             : null,
                         onTap: () {
-                          setState(() => _selectedCategory = category);
+                          setState(() {
+                            _selectedCategory = category;
+                            _visibleReportCount = _visibleReportBatchSize;
+                          });
                           Navigator.pop(context);
                         },
                       );
@@ -125,6 +137,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final userFullName = context.select<AuthViewModel, String>(
       (vm) => vm.user?.fullName ?? 'Cư dân',
     );
+    final userId = context.select<AuthViewModel, String?>(
+      (vm) => vm.user?.id,
+    );
     final unreadCount = context.select<NotificationViewModel, int>(
       (vm) => vm.unreadCount,
     );
@@ -133,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       (vm) => vm.dashboardSnapshot(
         selectedStatus: _selectedStatus,
         selectedCategory: _selectedCategory,
+        visibleItemCount: _visibleReportCount,
       ),
     );
     final isLoading = context.select<ReportViewModel, bool>(
@@ -149,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: RefreshIndicator(
           onRefresh: () async {
             final notificationViewModel = context.read<NotificationViewModel>();
-            await reportViewModel.refreshReports();
+            await reportViewModel.refreshReports(ownerId: userId);
             await notificationViewModel.loadUnreadCount(forceRemote: true);
           },
           color: AppColors.primary,
@@ -183,7 +199,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: _buildErrorState(
                     theme,
                     errorMessage,
-                    reportViewModel.loadDashboard,
+                    () => reportViewModel.loadDashboard(
+                      ownerId: userId,
+                      forceRefresh: true,
+                    ),
                   ),
                 )
               else if (dashboardSnapshot.isEmpty)
@@ -203,6 +222,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                   ),
+                ),
+              if (dashboardSnapshot.hasMoreItems)
+                SliverToBoxAdapter(
+                  child: _buildLoadMoreButton(theme, dashboardSnapshot),
                 ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -457,7 +480,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (_selectedCategory != null) ...[
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: () => setState(() => _selectedCategory = null),
+              onTap: () => setState(() {
+                _selectedCategory = null;
+                _visibleReportCount = _visibleReportBatchSize;
+              }),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -486,6 +512,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreButton(
+    ThemeData theme,
+    ReportDashboardSnapshot snapshot,
+  ) {
+    final nextBatchCount = math.min(
+      _visibleReportBatchSize,
+      snapshot.remainingItemCount,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: OutlinedButton.icon(
+        onPressed: () {
+          setState(() {
+            _visibleReportCount += _visibleReportBatchSize;
+          });
+        },
+        icon: const Icon(Icons.expand_more_rounded),
+        label: Text(
+          'Xem thêm $nextBatchCount báo cáo',
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.35),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }

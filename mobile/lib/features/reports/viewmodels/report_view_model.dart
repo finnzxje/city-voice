@@ -13,6 +13,7 @@ import '../services/report_service.dart';
 class ReportViewModel extends ChangeNotifier {
   final ReportService _reportService;
   final CategoryService _categoryService;
+  int _citizenDashboardRequestId = 0;
 
   ReportViewModel({
     required ReportService reportService,
@@ -46,6 +47,9 @@ class ReportViewModel extends ChangeNotifier {
   List<Report>? _dashboardSnapshotReportsSource;
   String? _dashboardSnapshotStatus;
   String? _dashboardSnapshotCategory;
+  int? _dashboardSnapshotVisibleItemCount;
+  bool _isCitizenDashboardInitialized = false;
+  String? _citizenDashboardOwnerId;
 
   // ── Private helpers ────────────────────────────────────────────────────────
   void _setLoading(bool v, {bool notify = true}) {
@@ -80,12 +84,16 @@ class ReportViewModel extends ChangeNotifier {
   ReportDashboardSnapshot dashboardSnapshot({
     String? selectedStatus,
     String? selectedCategory,
+    int visibleItemCount = 20,
   }) {
+    final normalizedVisibleItemCount =
+        visibleItemCount < 1 ? 1 : visibleItemCount;
     final cachedSnapshot = _dashboardSnapshotCache;
     if (cachedSnapshot != null &&
         identical(_dashboardSnapshotReportsSource, _reports) &&
         _dashboardSnapshotStatus == selectedStatus &&
-        _dashboardSnapshotCategory == selectedCategory) {
+        _dashboardSnapshotCategory == selectedCategory &&
+        _dashboardSnapshotVisibleItemCount == normalizedVisibleItemCount) {
       return cachedSnapshot;
     }
 
@@ -93,7 +101,9 @@ class ReportViewModel extends ChangeNotifier {
     var inProgressCount = 0;
     var resolvedCount = 0;
     var rejectedCount = 0;
-    final filteredReports = <Report>[];
+    var matchingReportCount = 0;
+    final visibleItems = <ReportDashboardItem>[];
+    DateTime? previousVisibleDate;
 
     for (final report in _reports) {
       switch (report.currentStatus) {
@@ -119,34 +129,42 @@ class ReportViewModel extends ChangeNotifier {
         continue;
       }
 
-      filteredReports.add(report);
-    }
+      matchingReportCount += 1;
+      if (visibleItems.length >= normalizedVisibleItemCount) {
+        continue;
+      }
 
-    final items = <ReportDashboardItem>[];
-    DateTime? previousDate;
-
-    for (var index = 0; index < filteredReports.length; index += 1) {
-      final report = filteredReports[index];
       final currentDate = DateTime(
         report.createdAt.year,
         report.createdAt.month,
         report.createdAt.day,
       );
-      final showDate = previousDate == null || currentDate != previousDate;
+      final showDate =
+          previousVisibleDate == null || currentDate != previousVisibleDate;
 
-      items.add(
+      visibleItems.add(
         ReportDashboardItem(
           report: report,
           showDate: showDate,
-          isLast: index == filteredReports.length - 1,
+          isLast: false,
         ),
       );
 
-      previousDate = currentDate;
+      previousVisibleDate = currentDate;
+    }
+
+    if (visibleItems.isNotEmpty) {
+      final lastIndex = visibleItems.length - 1;
+      visibleItems[lastIndex] = ReportDashboardItem(
+        report: visibleItems[lastIndex].report,
+        showDate: visibleItems[lastIndex].showDate,
+        isLast: true,
+      );
     }
 
     final snapshot = ReportDashboardSnapshot(
-      items: items,
+      items: visibleItems,
+      totalMatchingCount: matchingReportCount,
       newlyReceivedCount: newlyReceivedCount,
       inProgressCount: inProgressCount,
       resolvedCount: resolvedCount,
@@ -157,6 +175,7 @@ class ReportViewModel extends ChangeNotifier {
     _dashboardSnapshotReportsSource = _reports;
     _dashboardSnapshotStatus = selectedStatus;
     _dashboardSnapshotCategory = selectedCategory;
+    _dashboardSnapshotVisibleItemCount = normalizedVisibleItemCount;
 
     return snapshot;
   }
@@ -165,18 +184,52 @@ class ReportViewModel extends ChangeNotifier {
   // ACTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Load dashboard reports for the initial citizen first paint.
-  Future<void> loadDashboard() async {
+  /// Loads citizen dashboard reports.
+  Future<void> loadDashboard({
+    required String? ownerId,
+    bool forceRefresh = false,
+  }) async {
+    final shouldReuse = !forceRefresh &&
+        _isCitizenDashboardInitialized &&
+        _citizenDashboardOwnerId == ownerId;
+    if (shouldReuse) {
+      return;
+    }
+
+    final requestId = ++_citizenDashboardRequestId;
+    final ownerChanged =
+        _citizenDashboardOwnerId != null && _citizenDashboardOwnerId != ownerId;
+    if (ownerChanged) {
+      _reports = <Report>[];
+      _selectedReport = null;
+      _clearDashboardSnapshotCache();
+    }
+
     _setLoading(true, notify: false);
     _setError(null, notify: false);
     notifyListeners();
     try {
-      _reports = List<Report>.of(await _reportService.getMyReports());
+      final reports = List<Report>.of(await _reportService.getMyReports());
+      if (!_isCurrentCitizenDashboardRequest(requestId)) {
+        return;
+      }
+
+      _reports = reports;
+      _citizenDashboardOwnerId = ownerId;
+      _isCitizenDashboardInitialized = true;
     } catch (e) {
+      if (!_isCurrentCitizenDashboardRequest(requestId)) {
+        return;
+      }
+
+      _citizenDashboardOwnerId = ownerId;
+      _isCitizenDashboardInitialized = false;
       _setError(ApiErrorMessageResolver.fromObject(e), notify: false);
     } finally {
-      _setLoading(false, notify: false);
-      notifyListeners();
+      if (_isCurrentCitizenDashboardRequest(requestId)) {
+        _setLoading(false, notify: false);
+        notifyListeners();
+      }
     }
   }
 
@@ -203,14 +256,8 @@ class ReportViewModel extends ChangeNotifier {
   }
 
   /// Refresh only the report list (pull-to-refresh).
-  Future<void> refreshReports() async {
-    try {
-      _reports = List<Report>.of(await _reportService.getMyReports());
-      _errorMessage = null;
-      notifyListeners();
-    } catch (e) {
-      _setError(ApiErrorMessageResolver.fromObject(e));
-    }
+  Future<void> refreshReports({required String? ownerId}) async {
+    await loadDashboard(ownerId: ownerId, forceRefresh: true);
   }
 
   /// Refresh for staff (all reports).
@@ -259,6 +306,7 @@ class ReportViewModel extends ChangeNotifier {
         imageFile: imageFile,
       );
       _reports = [report, ..._reports];
+      _isCitizenDashboardInitialized = true;
       _setSuccess('Báo cáo đã được gửi thành công!', notify: false);
       return report.id;
     } catch (e) {
@@ -285,11 +333,24 @@ class ReportViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  bool _isCurrentCitizenDashboardRequest(int requestId) {
+    return requestId == _citizenDashboardRequestId;
+  }
+
+  void _clearDashboardSnapshotCache() {
+    _dashboardSnapshotCache = null;
+    _dashboardSnapshotReportsSource = null;
+    _dashboardSnapshotStatus = null;
+    _dashboardSnapshotCategory = null;
+    _dashboardSnapshotVisibleItemCount = null;
+  }
 }
 
 final class ReportDashboardSnapshot {
   const ReportDashboardSnapshot({
     required this.items,
+    required this.totalMatchingCount,
     required this.newlyReceivedCount,
     required this.inProgressCount,
     required this.resolvedCount,
@@ -297,12 +358,17 @@ final class ReportDashboardSnapshot {
   });
 
   final List<ReportDashboardItem> items;
+  final int totalMatchingCount;
   final int newlyReceivedCount;
   final int inProgressCount;
   final int resolvedCount;
   final int rejectedCount;
 
-  int get displayedCount => items.length;
+  int get displayedCount => totalMatchingCount;
+
+  int get remainingItemCount => totalMatchingCount - items.length;
+
+  bool get hasMoreItems => remainingItemCount > 0;
 
   bool get isEmpty => items.isEmpty;
 }
