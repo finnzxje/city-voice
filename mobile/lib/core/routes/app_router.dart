@@ -15,6 +15,7 @@ import '../../features/reports/views/report_detail_screen.dart';
 import '../../features/reports/views/staff_dashboard_screen.dart';
 import '../../features/reports/views/submit_report_screen.dart';
 import '../../features/review/views/staff_report_detail_screen.dart';
+import '../auth/user_role.dart';
 import '../storage/secure_storage_helper.dart';
 
 /// Declarative routing configuration for CityVoice.
@@ -171,9 +172,9 @@ class AppRouter {
     }
 
     final role = authVm.user?.role;
-    final isAdmin = role == 'admin';
-    final isStaffOrManager = role == 'staff' || role == 'manager';
-    final isCitizen = role == 'citizen';
+    final isAdmin = role == UserRole.admin;
+    final isStaffOrManager = role?.isStaffOrManager ?? false;
+    final isCitizen = role?.isCitizen ?? false;
 
     // ── Admin route guard ────────────────────────────────────────────────
     final isAdminRoute =
@@ -205,7 +206,7 @@ class AppRouter {
 
     // ── Analytics route guard: only manager + admin ─────────────────────
     final isAnalyticsRoute = currentPath == '/analytics';
-    if (isAnalyticsRoute && !(role == 'manager' || role == 'admin')) {
+    if (isAnalyticsRoute && !(role?.canAccessAnalytics ?? false)) {
       return homepage;
     }
 
@@ -214,11 +215,7 @@ class AppRouter {
 
   /// Returns the correct homepage path based on the user's role.
   String _homepageForRole(AuthViewModel authVm) {
-    final role = authVm.user?.role;
-    if (role == 'admin') return '/admin-dashboard';
-    if (role == 'manager') return '/analytics';
-    if (role == 'staff') return '/staff-dashboard';
-    return '/dashboard';
+    return authVm.user?.homeRoute ?? UserRole.citizen.homeRoute;
   }
 }
 

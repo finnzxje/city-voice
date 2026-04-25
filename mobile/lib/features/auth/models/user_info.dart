@@ -1,3 +1,5 @@
+import '../../../core/auth/user_role.dart';
+
 /// Represents the authenticated user's profile.
 ///
 /// Maps to the backend `UserInfoResponse` record returned by `GET /auth/me`:
@@ -14,7 +16,7 @@ class UserInfo {
   final String id;
   final String email;
   final String? fullName;
-  final String role;
+  final UserRole role;
   final bool isActive;
 
   const UserInfo({
@@ -30,7 +32,7 @@ class UserInfo {
       id: json['id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       fullName: json['fullName'] as String?,
-      role: (json['role']?.toString() ?? 'citizen').toLowerCase(),
+      role: UserRole.fromValue(json['role']?.toString()),
       isActive: json['isActive'] as bool? ?? false,
     );
   }
@@ -39,11 +41,13 @@ class UserInfo {
         'id': id,
         'email': email,
         'fullName': fullName,
-        'role': role,
+        'role': role.value,
         'isActive': isActive,
       };
 
-  bool get isCitizen => role == 'citizen';
+  bool get isCitizen => role.isCitizen;
 
-  bool get isInternal => role == 'staff' || role == 'manager' || role == 'admin';
+  bool get isInternal => role.isInternal;
+
+  String get homeRoute => role.homeRoute;
 }

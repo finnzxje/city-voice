@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../../core/network/api_error_message_resolver.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/storage/secure_storage_helper.dart';
 import '../models/user_info.dart';
@@ -95,17 +97,6 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  /// Extracts a user-facing error message from a [DioException].
-  String _extractError(Object e) {
-    if (e is DioException && e.error is ApiException) {
-      return (e.error as ApiException).message;
-    }
-    if (e is ApiException) {
-      return e.message;
-    }
-    return 'Đã xảy ra lỗi không xác định.';
-  }
-
   // ── Citizen Registration ────────────────────────────────────────────────
   Future<bool> register({
     required String email,
@@ -126,7 +117,7 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     }
@@ -145,7 +136,7 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     }
@@ -159,7 +150,7 @@ class AuthViewModel extends ChangeNotifier {
       final message = await _authService.resendVerification(email: email);
       _setSuccess(message);
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {
       _setLoading(false);
     }
@@ -195,11 +186,11 @@ class AuthViewModel extends ChangeNotifier {
           return false;
         }
       }
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     }
@@ -214,7 +205,7 @@ class AuthViewModel extends ChangeNotifier {
       _otpSent = true;
       _setSuccess(message);
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
     } finally {
       _setLoading(false);
     }
@@ -239,7 +230,7 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     }
@@ -265,7 +256,7 @@ class AuthViewModel extends ChangeNotifier {
       _setLoading(false);
       return true;
     } catch (e) {
-      _setError(_extractError(e));
+      _setError(ApiErrorMessageResolver.fromObject(e));
       _setLoading(false);
       return false;
     }

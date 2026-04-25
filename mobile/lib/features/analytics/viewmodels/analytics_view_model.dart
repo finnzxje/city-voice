@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../core/network/api_error_message_resolver.dart';
 import '../models/analytics_filter.dart';
 import '../models/heatmap_point.dart';
 import '../models/stats_model.dart';
@@ -91,7 +92,10 @@ class AnalyticsViewModel extends ChangeNotifier {
       _stats = await _service.getStats(_activeFilter);
       _statsState = AnalyticsViewState.success;
     } on DioException catch (e) {
-      _statsError = _extractDioError(e);
+      _statsError = ApiErrorMessageResolver.fromDioException(
+        e,
+        fallback: 'Lỗi kết nối',
+      );
       _statsState = AnalyticsViewState.error;
     } catch (e) {
       _statsError = e.toString();
@@ -105,7 +109,10 @@ class AnalyticsViewModel extends ChangeNotifier {
       _heatmapPoints = await _service.getHeatmap(_activeFilter);
       _heatmapState = AnalyticsViewState.success;
     } on DioException catch (e) {
-      _heatmapError = _extractDioError(e);
+      _heatmapError = ApiErrorMessageResolver.fromDioException(
+        e,
+        fallback: 'Lỗi kết nối',
+      );
       _heatmapState = AnalyticsViewState.error;
     } catch (e) {
       _heatmapError = e.toString();
@@ -176,7 +183,10 @@ class AnalyticsViewModel extends ChangeNotifier {
         // No app to open, but file is saved — that's still success.
       }
     } on DioException catch (e) {
-      _exportError = _extractDioError(e);
+      _exportError = ApiErrorMessageResolver.fromDioException(
+        e,
+        fallback: 'Lỗi kết nối',
+      );
       _exportState = AnalyticsViewState.error;
     } catch (e) {
       _exportError = 'Không thể xuất file: $e';
@@ -194,12 +204,4 @@ class AnalyticsViewModel extends ChangeNotifier {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-
-  String _extractDioError(DioException e) {
-    final data = e.response?.data;
-    if (data is Map<String, dynamic>) {
-      return data['message'] as String? ?? 'Đã xảy ra lỗi';
-    }
-    return e.message ?? 'Lỗi kết nối';
-  }
 }

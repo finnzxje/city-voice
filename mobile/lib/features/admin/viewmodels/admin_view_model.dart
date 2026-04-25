@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/network/api_exception.dart';
+import '../../../core/network/api_error_message_resolver.dart';
 import '../models/admin_category.dart';
 import '../models/upsert_category_request.dart';
 import '../models/user_manifest.dart';
@@ -55,6 +55,34 @@ class AdminViewModel extends ChangeNotifier {
 
   String? get categoriesError => _categoriesError;
 
+  // ── Filter state ───────────────────────────────────────────────────────────
+  String _searchQuery = '';
+  String? _roleFilter;
+
+  String get searchQuery => _searchQuery;
+
+  String? get roleFilter => _roleFilter;
+
+  List<UserManifest> get filteredUsers {
+    return _users.where((user) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          user.fullName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.email.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesRole = _roleFilter == null || user.role == _roleFilter;
+      return matchesSearch && matchesRole;
+    }).toList();
+  }
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void setRoleFilter(String? role) {
+    _roleFilter = role;
+    notifyListeners();
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // USER MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════════════
@@ -74,7 +102,7 @@ class AdminViewModel extends ChangeNotifier {
       _users = _sortUsers(results[1] as List<UserManifest>);
       _usersState = ViewState.success;
     } catch (e) {
-      _usersError = _extractError(e);
+      _usersError = ApiErrorMessageResolver.fromObject(e);
       _usersState = ViewState.error;
     }
     notifyListeners();
@@ -97,7 +125,7 @@ class AdminViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromObject(e);
       _actionState = ViewState.error;
       notifyListeners();
       return false;
@@ -119,7 +147,7 @@ class AdminViewModel extends ChangeNotifier {
       _categories = _sortCategories(fetchedCategories);
       _categoriesState = ViewState.success;
     } catch (e) {
-      _categoriesError = _extractError(e);
+      _categoriesError = ApiErrorMessageResolver.fromObject(e);
       _categoriesState = ViewState.error;
     }
     notifyListeners();
@@ -140,13 +168,13 @@ class AdminViewModel extends ChangeNotifier {
       if (e.response?.statusCode == 409) {
         _actionError = 'Slug này đã tồn tại';
       } else {
-        _actionError = _extractError(e);
+        _actionError = ApiErrorMessageResolver.fromObject(e);
       }
       _actionState = ViewState.error;
       notifyListeners();
       return false;
     } catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromObject(e);
       _actionState = ViewState.error;
       notifyListeners();
       return false;
@@ -172,7 +200,7 @@ class AdminViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _actionError = _extractError(e);
+      _actionError = ApiErrorMessageResolver.fromObject(e);
       _actionState = ViewState.error;
       notifyListeners();
       return false;
@@ -225,20 +253,5 @@ class AdminViewModel extends ChangeNotifier {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return sorted;
-  }
-
-  String _extractError(Object e) {
-    if (e is DioException && e.error is ApiException) {
-      return (e.error as ApiException).message;
-    }
-    if (e is DioException) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic>) {
-        return data['message'] as String? ?? 'Đã xảy ra lỗi';
-      }
-      return e.message ?? 'Lỗi kết nối';
-    }
-    if (e is ApiException) return e.message;
-    return 'Đã xảy ra lỗi không xác định';
   }
 }
