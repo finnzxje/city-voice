@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routes/app_routes.dart';
 import '../models/incident_category.dart';
 import '../viewmodels/report_view_model.dart';
 import 'submit_report/submit_report_form_controller.dart';
@@ -113,7 +114,7 @@ class _SubmitReportScreenState extends State<SubmitReportScreen> {
     if (newReportId != null) {
       _showSnackBar('Báo cáo đã được gửi thành công!');
       context.pushReplacementNamed(
-        'report-detail',
+        AppRouteNames.reportDetail,
         pathParameters: {'id': newReportId},
       );
     } else if (reportViewModel.errorMessage != null) {

@@ -1,7 +1,9 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_constants.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/network/api_payload_parser.dart';
 import '../models/report.dart';
 
 /// Service for all report-related API calls (citizen-facing).
@@ -10,46 +12,14 @@ class ReportService {
 
   ReportService({required Dio dio}) : _dio = dio;
 
-  Report _parseReportObject(dynamic data) {
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      final report = apiResponse.data;
-      if (report != null) return report;
-    }
-
-    if (data is Map<String, dynamic>) {
-      return Report.fromJson(data);
-    }
-
-    throw Exception('Unexpected response format');
-  }
+  Report _parseReportObject(dynamic data) =>
+      Report.fromJson(ApiPayloadParser.requireObject(data));
 
   List<Report> _parseReportList(dynamic data) {
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      final apiResponse = ApiResponse<List<Report>>.fromJson(
-        data,
-        fromJsonT: (json) {
-          if (json is List) {
-            return json
-                .map((item) => Report.fromJson(item as Map<String, dynamic>))
-                .toList();
-          }
-          return <Report>[];
-        },
-      );
-      return apiResponse.data ?? [];
-    }
-
-    if (data is List) {
-      return data
-          .map((item) => Report.fromJson(item as Map<String, dynamic>))
-          .toList();
-    }
-
-    return [];
+    return ApiPayloadParser.parseList(
+      data,
+      fromJson: Report.fromJson,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -127,28 +97,15 @@ class ReportService {
       queryParameters: queryParams,
     );
 
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      // Backend returns paginated: { "data": { "content": [...], ... } }
-      final apiResponse = ApiResponse<List<Report>>.fromJson(
-        data,
-        fromJsonT: (json) {
-          if (json is List) {
-            return json
-                .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                .toList();
-          }
-          // Paginated response: json is { "content": [...], ... }
-          if (json is Map<String, dynamic> && json.containsKey('content')) {
-            return (json['content'] as List)
-                .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                .toList();
-          }
-          return [];
-        },
+    final paginatedData =
+        ApiPayloadParser.paginatedDataMapOrNull(response.data);
+    if (paginatedData != null) {
+      return ApiPayloadParser.parseList(
+        paginatedData['content'],
+        fromJson: Report.fromJson,
       );
-      return apiResponse.data ?? [];
     }
-    return [];
+
+    return _parseReportList(response.data);
   }
 }

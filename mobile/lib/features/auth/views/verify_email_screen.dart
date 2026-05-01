@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../viewmodels/auth_view_model.dart';
 
@@ -33,7 +35,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
 
     if (success && mounted) {
-      context.go('/login');
+      context.go(AppRoutePaths.login);
     }
   }
 
@@ -49,7 +51,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     // Guard: if no email, redirect back to register.
     if (widget.email.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/register');
+        if (mounted) context.go(AppRoutePaths.register);
       });
       return const SizedBox.shrink();
     }
@@ -252,7 +254,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
                   child: TextButton(
-                    onPressed: () => context.go('/login'),
+                    onPressed: () => context.go(AppRoutePaths.login),
                     child: Text(
                       'Quay lại trang đăng nhập',
                       style: theme.textTheme.bodyMedium?.copyWith(

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/notification_model.dart';
 import '../viewmodels/notification_view_model.dart';
@@ -118,7 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     // Navigate to report detail.
     if (notification.reportId != null) {
-      context.push('/reports/${notification.reportId}');
+      context.push(AppRoutePaths.reportDetail(notification.reportId!));
     }
   }
 

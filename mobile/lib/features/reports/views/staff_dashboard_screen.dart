@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/user_role.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/models/incident_category.dart';
@@ -613,7 +614,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               final authViewModel = context.read<AuthViewModel>();
               final router = GoRouter.of(context);
               await authViewModel.logout();
-              router.go('/login');
+              router.go(AppRoutePaths.login);
             },
             icon: const Icon(Icons.logout_rounded),
             color: AppColors.textSecondary,

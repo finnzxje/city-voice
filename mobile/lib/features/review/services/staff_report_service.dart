@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_exception.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/network/api_payload_parser.dart';
 import '../../reports/models/report.dart';
 import '../models/reject_request.dart';
 import '../models/review_request.dart';
@@ -28,20 +28,8 @@ class StaffReportService {
 
   StaffReportService({required Dio dio}) : _dio = dio;
 
-  Report _parseReportObject(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      final report = apiResponse.data;
-      if (report != null) {
-        return report;
-      }
-    }
-
-    throw Exception('Unexpected response format');
-  }
+  Report _parseReportObject(dynamic data) =>
+      Report.fromJson(ApiPayloadParser.requireObject(data));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // List all reports (paginated, filterable)
@@ -68,41 +56,27 @@ class StaffReportService {
       queryParameters: queryParams,
     );
 
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<PaginatedResult>.fromJson(
-        data,
-        fromJsonT: (json) {
-          if (json is List) {
-            return PaginatedResult(
-              reports: json
-                  .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                  .toList(),
-              totalPages: 1,
-              currentPage: page,
-            );
-          }
-          // Paginated: { "content": [...], "totalPages": ..., ... }
-          if (json is Map<String, dynamic> && json.containsKey('content')) {
-            return PaginatedResult(
-              reports: (json['content'] as List)
-                  .map((e) => Report.fromJson(e as Map<String, dynamic>))
-                  .toList(),
-              totalPages: (json['totalPages'] as int?) ?? 1,
-              currentPage: (json['number'] as int?) ?? page,
-            );
-          }
-          return PaginatedResult(
-            reports: [],
-            totalPages: 1,
-            currentPage: page,
-          );
-        },
+    final paginatedData =
+        ApiPayloadParser.paginatedDataMapOrNull(response.data);
+    if (paginatedData != null) {
+      return PaginatedResult(
+        reports: ApiPayloadParser.parseList(
+          paginatedData['content'],
+          fromJson: Report.fromJson,
+        ),
+        totalPages: _readInt(paginatedData['totalPages'], fallback: 1),
+        currentPage: _readInt(paginatedData['number'], fallback: page),
       );
-      return apiResponse.data ??
-          PaginatedResult(reports: [], totalPages: 1, currentPage: page);
     }
-    return PaginatedResult(reports: [], totalPages: 1, currentPage: page);
+
+    return PaginatedResult(
+      reports: ApiPayloadParser.parseList(
+        response.data,
+        fromJson: Report.fromJson,
+      ),
+      totalPages: 1,
+      currentPage: page,
+    );
   }
 
   /// GET /reports/{id}
@@ -172,5 +146,21 @@ class StaffReportService {
     }
 
     return _parseReportObject(response.data);
+  }
+
+  int _readInt(dynamic value, {required int fallback}) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value) ?? fallback;
+    }
+
+    return fallback;
   }
 }

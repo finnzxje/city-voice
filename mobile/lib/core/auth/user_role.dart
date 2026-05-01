@@ -1,3 +1,5 @@
+import '../routes/app_routes.dart';
+
 enum UserRole {
   citizen('citizen'),
   staff('staff'),
@@ -29,10 +31,10 @@ extension UserRoleX on UserRole {
 
   String get homeRoute {
     return switch (this) {
-      UserRole.admin => '/admin-dashboard',
-      UserRole.manager => '/analytics',
-      UserRole.staff => '/staff-dashboard',
-      UserRole.citizen => '/dashboard',
+      UserRole.admin => AppRoutePaths.adminDashboard,
+      UserRole.manager => AppRoutePaths.analytics,
+      UserRole.staff => AppRoutePaths.staffDashboard,
+      UserRole.citizen => AppRoutePaths.dashboard,
     };
   }
 

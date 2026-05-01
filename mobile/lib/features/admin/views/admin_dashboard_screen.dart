@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 
@@ -52,7 +53,9 @@ class AdminDashboardScreen extends StatelessWidget {
                         IconButton(
                           onPressed: () async {
                             await authVm.logout();
-                            if (context.mounted) context.go('/login');
+                            if (context.mounted) {
+                              context.go(AppRoutePaths.login);
+                            }
                           },
                           icon: const Icon(Icons.logout_rounded),
                           tooltip: 'Đăng xuất',
@@ -107,7 +110,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     iconBgColor: const Color(0xFFE8EAF6),
                     title: 'Quản lý người dùng',
                     subtitle: 'Phân quyền và trạng thái tài khoản',
-                    onTap: () => context.push('/admin/users'),
+                    onTap: () => context.push(AppRoutePaths.adminUsers),
                   ),
                   const SizedBox(height: 16),
                   _AdminNavCard(
@@ -116,7 +119,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     iconBgColor: const Color(0xFFE0F2F1),
                     title: 'Quản lý danh mục',
                     subtitle: 'Thêm, sửa, ẩn các loại sự cố',
-                    onTap: () => context.push('/admin/categories'),
+                    onTap: () => context.push(AppRoutePaths.adminCategories),
                   ),
                   const SizedBox(height: 16),
                   _AdminNavCard(
@@ -125,7 +128,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     iconBgColor: const Color(0xFFE3F2FD),
                     title: 'Báo cáo & Phân tích',
                     subtitle: 'Thống kê, bản đồ nhiệt, xuất file',
-                    onTap: () => context.push('/analytics'),
+                    onTap: () => context.push(AppRoutePaths.analytics),
                   ),
                   const SizedBox(height: 16),
                   _AdminNavCard(
@@ -134,7 +137,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     iconBgColor: const Color(0xFFFFF3E0),
                     title: 'Quản lý báo cáo',
                     subtitle: 'Xem và xử lý tất cả báo cáo sự cố',
-                    onTap: () => context.push('/staff-dashboard'),
+                    onTap: () => context.push(AppRoutePaths.staffDashboard),
                   ),
                 ]),
               ),
