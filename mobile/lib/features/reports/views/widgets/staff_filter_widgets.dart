@@ -24,7 +24,7 @@ class FilterDropdown<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: value != null
-            ? AppColors.primary.withOpacity(0.08)
+            ? AppColors.primary.withValues(alpha: 0.08)
             : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
@@ -76,9 +76,11 @@ class ClearFilterButton extends StatelessWidget {
         height: 48,
         width: 48,
         decoration: BoxDecoration(
-          color: AppColors.error.withOpacity(0.1),
+          color: AppColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+          border: Border.all(
+            color: AppColors.error.withValues(alpha: 0.3),
+          ),
         ),
         child: const Icon(Icons.filter_alt_off_rounded,
             size: 20, color: AppColors.error),

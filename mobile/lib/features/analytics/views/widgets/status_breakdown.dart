@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../models/stats_model.dart';
 import '../../viewmodels/analytics_view_model.dart';
 
 /// Row of status count chips.
 class StatusBreakdown extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const StatusBreakdown({super.key, required this.vm});
+  const StatusBreakdown({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final stats = vm.stats;
-    if (stats == null && vm.statsState == AnalyticsViewState.loading) {
+    final state = context.select<AnalyticsViewModel,
+        ({AnalyticsViewState statsState, StatsModel? stats})>(
+      (vm) => (
+        statsState: vm.statsState,
+        stats: vm.stats,
+      ),
+    );
+    final stats = state.stats;
+
+    if (stats == null && state.statsState == AnalyticsViewState.loading) {
       return const SizedBox(height: 36);
     }
-    if (stats == null) return const SizedBox.shrink();
+    if (stats == null) {
+      return const SizedBox.shrink();
+    }
 
     return Row(
       children: [

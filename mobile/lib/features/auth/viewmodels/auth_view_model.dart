@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,7 +11,6 @@ import '../models/user_info.dart';
 import '../services/auth_service.dart';
 
 /// Exposes the current [user], loading/error states, and all auth actions.
-/// Consumed by auth screens and the global router redirect guard.
 class AuthViewModel extends ChangeNotifier {
   final AuthService _authService;
   final SecureStorageHelper _storage;
@@ -82,6 +84,8 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> _syncAuthStateWithStorage() async {
     final hasToken = await _storage.hasTokens();
     if (hasToken) return;
+
+    await _storage.deleteCachedUserProfile();
 
     final shouldNotify =
         _user != null || _isAuthenticated || _otpSent || _errorMessage != null;
@@ -263,25 +267,42 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   // ── Try restoring session from stored tokens ───────────────────────────
-  /// Called at app startup to check if the user is already logged in.
   Future<void> tryAutoLogin() async {
     try {
-      final hasToken = await _storage.hasTokens();
-      if (!hasToken) {
-        _isAuthenticated = false;
-        _user = null;
+      final sessionPresenceHint = await _storage.getSessionPresenceHint();
+      if (sessionPresenceHint != true) {
+        _clearAuthState(notify: false);
         return;
       }
 
-      await _fetchAndSetUser();
+      final hasToken = await _storage.hasTokens();
+      if (!hasToken) {
+        _clearAuthState(notify: false);
+        return;
+      }
+
+      final cachedUser = await _restoreCachedUser();
+      if (cachedUser != null) {
+        _applyAuthenticatedUser(cachedUser, notify: false);
+        _isRestoringSession = false;
+        notifyListeners();
+        unawaited(_refreshCurrentUserInBackground());
+        return;
+      }
+
+      _isAuthenticated = true;
+      _isRestoringSession = false;
+      notifyListeners();
+      unawaited(_refreshCurrentUserInBackground());
     } catch (_) {
       // Token likely expired and couldn't refresh — clear state.
       await _storage.clearAll();
-      _isAuthenticated = false;
-      _user = null;
+      _clearAuthState(notify: false);
     } finally {
-      _isRestoringSession = false;
-      notifyListeners();
+      if (_isRestoringSession) {
+        _isRestoringSession = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -301,9 +322,68 @@ class AuthViewModel extends ChangeNotifier {
 
   // ── Internal ───────────────────────────────────────────────────────────
   Future<void> _fetchAndSetUser() async {
-    _user = await _authService.fetchCurrentUser();
+    final user = await _authService.fetchCurrentUser();
+    _applyAuthenticatedUser(user, notify: true);
+    await _storage.saveCachedUserProfile(jsonEncode(user.toJson()));
+  }
+
+  Future<UserInfo?> _restoreCachedUser() async {
+    final cachedProfile = await _storage.getCachedUserProfile();
+    if (cachedProfile == null || cachedProfile.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(cachedProfile);
+      if (decoded is! Map) {
+        await _storage.deleteCachedUserProfile();
+        return null;
+      }
+
+      return UserInfo.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      await _storage.deleteCachedUserProfile();
+      return null;
+    }
+  }
+
+  Future<void> _refreshCurrentUserInBackground() async {
+    try {
+      await _fetchAndSetUser();
+    } on DioException catch (error) {
+      final wrappedError = error.error;
+      final shouldInvalidateSession = wrappedError is SessionExpiredException ||
+          (wrappedError is ApiException && wrappedError.code == 401);
+
+      if (shouldInvalidateSession) {
+        await _storage.clearAll();
+        _clearAuthState();
+      }
+    } catch (_) {
+      // Preserve the cached user for transient startup/network failures.
+    }
+  }
+
+  void _applyAuthenticatedUser(
+    UserInfo user, {
+    required bool notify,
+  }) {
+    _user = user;
     _isAuthenticated = true;
-    notifyListeners();
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void _clearAuthState({bool notify = true}) {
+    _user = null;
+    _isAuthenticated = false;
+    _otpSent = false;
+    _errorMessage = null;
+    _successMessage = null;
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   @override

@@ -1,15 +1,15 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/constants/api_constants.dart';
-import '../../../core/network/api_response.dart';
 import '../models/analytics_filter.dart';
 import '../models/heatmap_point.dart';
 import '../models/stats_model.dart';
 
 /// Service for analytics API calls (manager/admin only).
 class AnalyticsService {
+  static const int _heatmapComputeThreshold = 200;
+
   final Dio _dio;
 
   AnalyticsService({required Dio dio}) : _dio = dio;
@@ -21,24 +21,16 @@ class AnalyticsService {
       ApiConstants.analyticsHeatmap,
       queryParameters: filter.toQueryParams(),
     );
-    final data = response.data;
-
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<List<HeatmapPoint>>.fromJson(
-        data,
-        fromJsonT: (json) => (json as List)
-            .map((e) => HeatmapPoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
-      return apiResponse.data ?? [];
+    final payload = _extractHeatmapPayload(response.data);
+    if (payload.isEmpty) {
+      return const <HeatmapPoint>[];
     }
 
-    if (data is List) {
-      return data
-          .map((e) => HeatmapPoint.fromJson(e as Map<String, dynamic>))
-          .toList();
+    if (payload.length < _heatmapComputeThreshold) {
+      return _parseHeatmapPayload(payload);
     }
-    return [];
+
+    return compute(_parseHeatmapPayload, payload);
   }
 
   /// Fetches aggregated statistics.
@@ -75,4 +67,33 @@ class AnalyticsService {
 
     return Uint8List.fromList(response.data ?? []);
   }
+
+  List<Map<String, dynamic>> _extractHeatmapPayload(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final rawPayload = data['data'];
+      if (rawPayload is List) {
+        return _copyHeatmapPayload(rawPayload);
+      }
+      return const <Map<String, dynamic>>[];
+    }
+
+    if (data is List) {
+      return _copyHeatmapPayload(data);
+    }
+
+    return const <Map<String, dynamic>>[];
+  }
+}
+
+List<Map<String, dynamic>> _copyHeatmapPayload(List<dynamic> rawItems) {
+  return rawItems
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList(growable: false);
+}
+
+List<HeatmapPoint> _parseHeatmapPayload(List<Map<String, dynamic>> payload) {
+  return payload
+      .map(HeatmapPoint.fromJson)
+      .toList(growable: false);
 }

@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_cached_network_image.dart';
+import '../../../../core/utils/app_map_tile_layer.dart';
 import '../../../../core/utils/utils.dart';
 import '../../models/report.dart';
 import '../widgets/timeline_step.dart';
@@ -13,7 +15,7 @@ const _reportDetailActionBlue = Color(0xFF1D4ED8);
 const _reportDetailSurfaceTint = Color(0xFFEFF6FF);
 const _reportDetailPlaceholderColor = Color(0xFF94A3B8);
 
-class ReportDetailBody extends StatelessWidget {
+class ReportDetailBody extends StatefulWidget {
   const ReportDetailBody({
     super.key,
     required this.report,
@@ -24,14 +26,36 @@ class ReportDetailBody extends StatelessWidget {
   final VoidCallback onEnableNotifications;
 
   @override
+  State<ReportDetailBody> createState() => _ReportDetailBodyState();
+}
+
+class _ReportDetailBodyState extends State<ReportDetailBody> {
+  late ReportDetailPresenter _presenter;
+
+  @override
+  void initState() {
+    super.initState();
+    _presenter = ReportDetailPresenter(widget.report);
+  }
+
+  @override
+  void didUpdateWidget(covariant ReportDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!identical(oldWidget.report, widget.report)) {
+      _presenter = ReportDetailPresenter(widget.report);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final presenter = ReportDetailPresenter(report);
+    final presenter = _presenter;
 
     return ListView(
       physics: const ClampingScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
-        ReportDetailHeroImage(report: report),
+        ReportDetailHeroImage(report: widget.report),
         Transform.translate(
           offset: const Offset(0, -24),
           child: Container(
@@ -45,7 +69,7 @@ class ReportDetailBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  report.title,
+                  widget.report.title,
                   style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
@@ -68,7 +92,7 @@ class ReportDetailBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ReportDetailLocationCard(
-                  report: report,
+                  report: widget.report,
                   presenter: presenter,
                 ),
                 const SizedBox(height: 32),
@@ -83,7 +107,7 @@ class ReportDetailBody extends StatelessWidget {
                 ReportDetailTimelineSection(items: presenter.timelineItems),
                 const SizedBox(height: 32),
                 ReportDetailNotificationButton(
-                  onPressed: onEnableNotifications,
+                  onPressed: widget.onEnableNotifications,
                 ),
                 const SizedBox(height: 12),
                 Center(
@@ -120,14 +144,16 @@ class ReportDetailHeroImage extends StatelessWidget {
     return SizedBox(
       height: 280,
       width: double.infinity,
-      child: imageUrl != null
-          ? Image.network(
-              Utils.getSafeUrl(imageUrl),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const _ReportDetailPlaceholderHero(),
-            )
-          : const _ReportDetailPlaceholderHero(),
+      child: AppCachedNetworkImage(
+        imageUrl: Utils.getSafeUrl(imageUrl),
+        width: double.infinity,
+        height: 280,
+        fit: BoxFit.cover,
+        memCacheWidth: 1200,
+        previewMemCacheWidth: 600,
+        placeholder: const _ReportDetailPlaceholderHero(),
+        errorWidget: const _ReportDetailPlaceholderHero(),
+      ),
     );
   }
 }
@@ -230,11 +256,7 @@ class ReportDetailLocationCard extends StatelessWidget {
                   ),
                 ),
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.cityvoice',
-                  ),
+                  const AppMapTileLayer(),
                   MarkerLayer(
                     markers: [
                       Marker(
@@ -306,6 +328,7 @@ class ReportDetailTimelineSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: items
           .map(
             (item) => TimelineStep(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
 import '../../../core/theme/app_colors.dart';
 import '../models/notification_model.dart';
 import '../viewmodels/notification_view_model.dart';
@@ -14,12 +15,22 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  NotificationViewModel? _viewModel;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NotificationViewModel>().init();
+      final viewModel = context.read<NotificationViewModel>();
+      _viewModel = viewModel;
+      viewModel.init();
     });
+  }
+
+  @override
+  void dispose() {
+    _viewModel?.useBadgeOnlyPolling();
+    super.dispose();
   }
 
   @override
@@ -70,7 +81,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => vm.refresh(showLoading: false),
+            onRefresh: () => vm.loadNotifications(showLoading: false),
             color: AppColors.primary,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -83,6 +94,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemBuilder: (context, index) {
                 final notif = vm.notifications[index];
                 return _NotificationTile(
+                  key: ValueKey(notif.id),
                   notification: notif,
                   onTap: () => _onNotificationTap(context, vm, notif),
                 );
@@ -167,6 +179,7 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _NotificationTile({
+    super.key,
     required this.notification,
     required this.onTap,
   });

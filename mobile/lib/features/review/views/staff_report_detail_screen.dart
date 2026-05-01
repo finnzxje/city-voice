@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/app_cached_network_image.dart';
 import '../../../core/utils/utils.dart';
 import '../../reports/models/report.dart';
 import '../viewmodels/staff_workflow_view_model.dart';
@@ -13,6 +14,12 @@ import 'widgets/report_map_section.dart';
 import 'widgets/resolve_bottom_sheet.dart';
 import 'widgets/review_bottom_sheet.dart';
 import 'widgets/staff_action_bar.dart';
+
+typedef _StaffReportDetailViewState = ({
+  bool isLoading,
+  String? errorMessage,
+  Report? selectedReport,
+});
 
 /// Staff-facing report detail screen.
 class StaffReportDetailScreen extends StatefulWidget {
@@ -36,6 +43,16 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.read<StaffWorkflowViewModel>();
+    final viewState =
+        context.select<StaffWorkflowViewModel, _StaffReportDetailViewState>(
+      (vm) => (
+        isLoading: vm.isLoading,
+        errorMessage: vm.errorMessage,
+        selectedReport: vm.selectedReport,
+      ),
+    );
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -66,42 +83,50 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
             ),
           ],
         ),
-        body: Consumer<StaffWorkflowViewModel>(
-          builder: (context, vm, _) {
-            if (vm.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF0033CC)),
-              );
-            }
-            if (vm.errorMessage != null && vm.selectedReport == null) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text(vm.errorMessage!,
-                        style: const TextStyle(color: Colors.red)),
-                    TextButton(
-                      onPressed: () => vm.loadReportDetail(widget.reportId),
-                      child: const Text('Thử lại'),
-                    ),
-                  ],
-                ),
-              );
-            }
-            final report = vm.selectedReport;
-            if (report == null) {
-              return const Center(
-                child: Text('Không tìm thấy báo cáo.'),
-              );
-            }
-            return _buildBody(report);
-          },
-        ),
+        body: _buildContent(viewState, viewModel),
       ),
     );
+  }
+
+  Widget _buildContent(
+    _StaffReportDetailViewState viewState,
+    StaffWorkflowViewModel viewModel,
+  ) {
+    if (viewState.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0033CC)),
+      );
+    }
+
+    final errorMessage = viewState.errorMessage;
+    final report = viewState.selectedReport;
+    if (errorMessage != null && report == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              errorMessage,
+              style: const TextStyle(color: Colors.red),
+            ),
+            TextButton(
+              onPressed: () => viewModel.loadReportDetail(widget.reportId),
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (report == null) {
+      return const Center(
+        child: Text('Không tìm thấy báo cáo.'),
+      );
+    }
+
+    return _buildBody(report);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -139,11 +164,12 @@ class _StaffReportDetailScreenState extends State<StaffReportDetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      Utils.getSafeUrl(report.resolutionImageUrl),
+                    child: AppCachedNetworkImage(
+                      imageUrl: Utils.getSafeUrl(report.resolutionImageUrl),
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      memCacheWidth: 1200,
                     ),
                   ),
                 ),

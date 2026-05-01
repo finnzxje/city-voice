@@ -28,6 +28,21 @@ class StaffReportService {
 
   StaffReportService({required Dio dio}) : _dio = dio;
 
+  Report _parseReportObject(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final apiResponse = ApiResponse<Report>.fromJson(
+        data,
+        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
+      );
+      final report = apiResponse.data;
+      if (report != null) {
+        return report;
+      }
+    }
+
+    throw Exception('Unexpected response format');
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // List all reports (paginated, filterable)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -90,6 +105,12 @@ class StaffReportService {
     return PaginatedResult(reports: [], totalPages: 1, currentPage: page);
   }
 
+  /// GET /reports/{id}
+  Future<Report> getReportById(String reportId) async {
+    final response = await _dio.get(ApiConstants.reportById(reportId));
+    return _parseReportObject(response.data);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Review → newly_received → in_progress
   // ═══════════════════════════════════════════════════════════════════════════
@@ -100,16 +121,7 @@ class StaffReportService {
       ApiConstants.reviewReport(reportId),
       data: body.toJson(),
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      return apiResponse.data!;
-    }
-    throw Exception('Unexpected response format');
+    return _parseReportObject(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -122,16 +134,7 @@ class StaffReportService {
       ApiConstants.rejectReport(reportId),
       data: body.toJson(),
     );
-
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      return apiResponse.data!;
-    }
-    throw Exception('Unexpected response format');
+    return _parseReportObject(response.data);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -168,14 +171,6 @@ class StaffReportService {
       rethrow;
     }
 
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      final apiResponse = ApiResponse<Report>.fromJson(
-        data,
-        fromJsonT: (json) => Report.fromJson(json as Map<String, dynamic>),
-      );
-      return apiResponse.data!;
-    }
-    throw Exception('Unexpected response format');
+    return _parseReportObject(response.data);
   }
 }

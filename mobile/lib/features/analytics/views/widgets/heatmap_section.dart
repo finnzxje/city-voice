@@ -1,19 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/app_map_tile_layer.dart';
+import '../../models/heatmap_point.dart';
 import '../../viewmodels/analytics_view_model.dart';
 
 /// Heatmap section with map overlay.
 class HeatmapSection extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const HeatmapSection({super.key, required this.vm});
+  const HeatmapSection({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final state = context.select<
+        AnalyticsViewModel,
+        ({
+          AnalyticsViewState heatmapState,
+          String? heatmapError,
+          List<HeatmapPoint> heatmapPoints,
+        })>(
+      (vm) => (
+        heatmapState: vm.heatmapState,
+        heatmapError: vm.heatmapError,
+        heatmapPoints: vm.heatmapPoints,
+      ),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -30,15 +45,23 @@ class HeatmapSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           child: SizedBox(
             height: 320,
-            child: _buildMapContent(),
+            child: _buildMapContent(
+              heatmapState: state.heatmapState,
+              heatmapError: state.heatmapError,
+              heatmapPoints: state.heatmapPoints,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMapContent() {
-    if (vm.heatmapState == AnalyticsViewState.loading) {
+  Widget _buildMapContent({
+    required AnalyticsViewState heatmapState,
+    required String? heatmapError,
+    required List<HeatmapPoint> heatmapPoints,
+  }) {
+    if (heatmapState == AnalyticsViewState.loading) {
       return Shimmer.fromColors(
         baseColor: Colors.grey.shade200,
         highlightColor: Colors.grey.shade100,
@@ -46,7 +69,7 @@ class HeatmapSection extends StatelessWidget {
       );
     }
 
-    if (vm.heatmapState == AnalyticsViewState.error) {
+    if (heatmapState == AnalyticsViewState.error) {
       return Container(
         color: Colors.grey.shade100,
         child: Center(
@@ -56,7 +79,7 @@ class HeatmapSection extends StatelessWidget {
               const Icon(Icons.map_outlined,
                   size: 40, color: AppColors.textHint),
               const SizedBox(height: 8),
-              Text(vm.heatmapError ?? 'Lỗi tải bản đồ',
+              Text(heatmapError ?? 'Lỗi tải bản đồ',
                   style: const TextStyle(color: AppColors.textSecondary)),
             ],
           ),
@@ -66,30 +89,30 @@ class HeatmapSection extends StatelessWidget {
 
     const center = LatLng(10.7769, 106.7009);
 
-    return FlutterMap(
-      options: const MapOptions(
-        initialCenter: center,
-        initialZoom: 11,
-        interactionOptions: InteractionOptions(
-          flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+    return RepaintBoundary(
+      child: FlutterMap(
+        options: const MapOptions(
+          initialCenter: center,
+          initialZoom: 11,
+          interactionOptions: InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          ),
         ),
+        children: [
+          const AppMapTileLayer(),
+          CircleLayer(
+            circles: [
+              for (final point in heatmapPoints)
+                CircleMarker(
+                  point: LatLng(point.latitude, point.longitude),
+                  radius: 12,
+                  color: _priorityColor(point.priority),
+                  borderStrokeWidth: 0,
+                ),
+            ],
+          ),
+        ],
       ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'vn.cityvoice.mobile',
-        ),
-        CircleLayer(
-          circles: vm.heatmapPoints.map((pt) {
-            return CircleMarker(
-              point: LatLng(pt.latitude, pt.longitude),
-              radius: 12,
-              color: _priorityColor(pt.priority),
-              borderStrokeWidth: 0,
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 

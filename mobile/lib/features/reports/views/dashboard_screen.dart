@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -18,26 +20,39 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  static const int _visibleReportBatchSize = 20;
+
   String? _selectedStatus;
   String? _selectedCategory;
+  int _visibleReportCount = _visibleReportBatchSize;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ReportViewModel>().loadDashboard();
-      context.read<NotificationViewModel>().init();
+      final authViewModel = context.read<AuthViewModel>();
+      context.read<ReportViewModel>().loadDashboard(
+            ownerId: authViewModel.user?.id,
+          );
+      context.read<NotificationViewModel>().initBadgeOnly();
     });
   }
 
   void _onStatusFilterTapped(String status) {
     setState(() {
       _selectedStatus = _selectedStatus == status ? null : status;
+      _visibleReportCount = _visibleReportBatchSize;
     });
   }
 
-  void _showCategoryFilterBottomSheet(
-      BuildContext context, ReportViewModel vm) {
+  Future<void> _showCategoryFilterBottomSheet(ReportViewModel vm) async {
+    if (vm.categories.isEmpty) {
+      await vm.loadCategories();
+      if (!mounted) {
+        return;
+      }
+    }
+
     final uniqueCategories = vm.categories.map((r) => r.name).toSet().toList()
       ..sort();
 
@@ -99,7 +114,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: AppColors.primary)
                             : null,
                         onTap: () {
-                          setState(() => _selectedCategory = category);
+                          setState(() {
+                            _selectedCategory = category;
+                            _visibleReportCount = _visibleReportBatchSize;
+                          });
                           Navigator.pop(context);
                         },
                       );
@@ -116,83 +134,102 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authVm = context.watch<AuthViewModel>();
+    final userFullName = context.select<AuthViewModel, String>(
+      (vm) => vm.user?.fullName ?? 'Cư dân',
+    );
+    final userId = context.select<AuthViewModel, String?>(
+      (vm) => vm.user?.id,
+    );
+    final unreadCount = context.select<NotificationViewModel, int>(
+      (vm) => vm.unreadCount,
+    );
+    final dashboardSnapshot =
+        context.select<ReportViewModel, ReportDashboardSnapshot>(
+      (vm) => vm.dashboardSnapshot(
+        selectedStatus: _selectedStatus,
+        selectedCategory: _selectedCategory,
+        visibleItemCount: _visibleReportCount,
+      ),
+    );
+    final isLoading = context.select<ReportViewModel, bool>(
+      (vm) => vm.isLoading,
+    );
+    final errorMessage = context.select<ReportViewModel, String?>(
+      (vm) => vm.errorMessage,
+    );
+    final reportViewModel = context.read<ReportViewModel>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: Consumer<ReportViewModel>(
-          builder: (context, vm, _) {
-            var displayedReports = vm.reports;
-
-            if (_selectedStatus != null) {
-              displayedReports = displayedReports
-                  .where((r) => r.currentStatus == _selectedStatus)
-                  .toList();
-            }
-
-            if (_selectedCategory != null) {
-              displayedReports = displayedReports
-                  .where((r) => r.categoryName == _selectedCategory)
-                  .toList();
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                final notifVm = context.read<NotificationViewModel>();
-                await vm.refreshReports();
-                await notifVm.refresh(showLoading: false);
-              },
-              color: AppColors.primary,
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(child: _buildHeader(theme, authVm, vm)),
-                  SliverToBoxAdapter(child: _buildStatsGrid(vm)),
-                  SliverToBoxAdapter(
-                    child: _buildListHeader(theme, displayedReports.length, vm),
-                  ),
-                  if (vm.isLoading && vm.reports.isEmpty)
-                    const SliverFillRemaining(
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                    )
-                  else if (vm.errorMessage != null && vm.reports.isEmpty)
-                    SliverFillRemaining(child: _buildErrorState(theme, vm))
-                  else if (displayedReports.isEmpty)
-                    SliverFillRemaining(child: _buildEmptyState(theme))
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverList.builder(
-                        itemCount: displayedReports.length,
-                        itemBuilder: (context, index) {
-                          final report = displayedReports[index];
-                          bool showDate = true;
-
-                          if (index > 0) {
-                            final prev = displayedReports[index - 1];
-                            if (report.createdAt.day == prev.createdAt.day &&
-                                report.createdAt.month ==
-                                    prev.createdAt.month &&
-                                report.createdAt.year == prev.createdAt.year) {
-                              showDate = false;
-                            }
-                          }
-
-                          return TimelineReportCard(
-                            report: report,
-                            showDate: showDate,
-                            isLast: index == displayedReports.length - 1,
-                          );
-                        },
-                      ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                ],
-              ),
-            );
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final notificationViewModel = context.read<NotificationViewModel>();
+            await reportViewModel.refreshReports(ownerId: userId);
+            await notificationViewModel.loadUnreadCount(forceRemote: true);
           },
+          color: AppColors.primary,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildHeader(
+                  theme,
+                  userFullName: userFullName,
+                  unreadCount: unreadCount,
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: _buildStatsGrid(dashboardSnapshot),
+              ),
+              SliverToBoxAdapter(
+                child: _buildListHeader(
+                  theme,
+                  dashboardSnapshot.displayedCount,
+                  reportViewModel,
+                ),
+              ),
+              if (isLoading && dashboardSnapshot.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                )
+              else if (errorMessage != null && dashboardSnapshot.isEmpty)
+                SliverFillRemaining(
+                  child: _buildErrorState(
+                    theme,
+                    errorMessage,
+                    () => reportViewModel.loadDashboard(
+                      ownerId: userId,
+                      forceRefresh: true,
+                    ),
+                  ),
+                )
+              else if (dashboardSnapshot.isEmpty)
+                SliverFillRemaining(child: _buildEmptyState(theme))
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList.builder(
+                    itemCount: dashboardSnapshot.items.length,
+                    itemBuilder: (context, index) {
+                      final item = dashboardSnapshot.items[index];
+                      return TimelineReportCard(
+                        key: ValueKey(item.report.id),
+                        report: item.report,
+                        showDate: item.showDate,
+                        isLast: item.isLast,
+                      );
+                    },
+                  ),
+                ),
+              if (dashboardSnapshot.hasMoreItems)
+                SliverToBoxAdapter(
+                  child: _buildLoadMoreButton(theme, dashboardSnapshot),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -210,8 +247,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildHeader(
-      ThemeData theme, AuthViewModel authVm, ReportViewModel vm) {
-    final name = authVm.user?.fullName ?? 'Cư dân';
+    ThemeData theme, {
+    required String userFullName,
+    required int unreadCount,
+  }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
       child: Row(
@@ -227,7 +266,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 Text(
-                  name,
+                  userFullName,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -235,44 +274,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          Consumer<NotificationViewModel>(
-            builder: (ctx, notifVm, _) => Stack(
-              children: [
-                IconButton(
-                  onPressed: () => context.push('/notifications'),
-                  icon: const Icon(Icons.notifications_outlined),
-                  iconSize: 28,
-                  color: AppColors.textPrimary,
-                ),
-                if (notifVm.unreadCount > 0)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
+          Stack(
+            children: [
+              IconButton(
+                onPressed: () => context.push('/notifications'),
+                icon: const Icon(Icons.notifications_outlined),
+                iconSize: 28,
+                color: AppColors.textPrimary,
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
+                    ),
+                    child: Text(
+                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        notifVm.unreadCount > 9
-                            ? '9+'
-                            : '${notifVm.unreadCount}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
           IconButton(
             onPressed: () async {
@@ -294,16 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Stats Grid
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildStatsGrid(ReportViewModel vm) {
-    final newCount =
-        vm.reports.where((r) => r.currentStatus == 'newly_received').length;
-    final inProgressCount =
-        vm.reports.where((r) => r.currentStatus == 'in_progress').length;
-    final resolvedCount =
-        vm.reports.where((r) => r.currentStatus == 'resolved').length;
-    final rejectedCount =
-        vm.reports.where((r) => r.currentStatus == 'rejected').length;
-
+  Widget _buildStatsGrid(ReportDashboardSnapshot snapshot) {
     return Padding(
       padding: const EdgeInsets.only(top: 16, left: 20, right: 20),
       child: Column(
@@ -313,7 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: StatusStatCard(
                   label: 'Mới tiếp\nnhận',
-                  count: newCount,
+                  count: snapshot.newlyReceivedCount,
                   icon: Icons.note_add_rounded,
                   iconColor: const Color(0xFF0044CC),
                   bgColor: const Color(0xFFEBF0FF),
@@ -328,7 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: StatusStatCard(
                   label: 'Đang\nxử lý',
-                  count: inProgressCount,
+                  count: snapshot.inProgressCount,
                   icon: Icons.assignment_late_rounded,
                   iconColor: const Color(0xFFCC4400),
                   bgColor: const Color(0xFFFFF0E5),
@@ -347,7 +373,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: StatusStatCard(
                   label: 'Hoàn\nthành',
-                  count: resolvedCount,
+                  count: snapshot.resolvedCount,
                   icon: Icons.check_circle_rounded,
                   iconColor: const Color(0xFF008033),
                   bgColor: const Color(0xFFE5F7ED),
@@ -362,7 +388,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: StatusStatCard(
                   label: 'Bị từ\nchối',
-                  count: rejectedCount,
+                  count: snapshot.rejectedCount,
                   icon: Icons.cancel_rounded,
                   iconColor: const Color(0xFFCC0000),
                   bgColor: const Color(0xFFFFE5E5),
@@ -409,7 +435,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -425,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => _showCategoryFilterBottomSheet(context, vm),
+                onTap: () => _showCategoryFilterBottomSheet(vm),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -454,14 +480,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (_selectedCategory != null) ...[
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: () => setState(() => _selectedCategory = null),
+              onTap: () => setState(() {
+                _selectedCategory = null;
+                _visibleReportCount = _visibleReportBatchSize;
+              }),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -486,6 +516,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildLoadMoreButton(
+    ThemeData theme,
+    ReportDashboardSnapshot snapshot,
+  ) {
+    final nextBatchCount = math.min(
+      _visibleReportBatchSize,
+      snapshot.remainingItemCount,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: OutlinedButton.icon(
+        onPressed: () {
+          setState(() {
+            _visibleReportCount += _visibleReportBatchSize;
+          });
+        },
+        icon: const Icon(Icons.expand_more_rounded),
+        label: Text(
+          'Xem thêm $nextBatchCount báo cáo',
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.35),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Empty / Error states
   // ═══════════════════════════════════════════════════════════════════════════
@@ -496,7 +565,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.inbox_rounded,
-              size: 64, color: AppColors.textHint.withOpacity(0.5)),
+              size: 64, color: AppColors.textHint.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             (_selectedStatus != null || _selectedCategory != null)
@@ -517,7 +586,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildErrorState(ThemeData theme, ReportViewModel vm) {
+  Widget _buildErrorState(
+    ThemeData theme,
+    String errorMessage,
+    Future<void> Function() onRetry,
+  ) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -526,13 +599,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               size: 56, color: AppColors.error),
           const SizedBox(height: 12),
           Text(
-            vm.errorMessage!,
+            errorMessage,
             style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.error),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
-            onPressed: () => vm.loadDashboard(),
+            onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Thử lại'),
           ),

@@ -1,36 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../viewmodels/analytics_view_model.dart';
 
 /// Export buttons for Excel and PDF.
 class ExportSection extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const ExportSection({super.key, required this.vm});
+  const ExportSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = vm.exportState == AnalyticsViewState.loading;
+    final state = context.select<
+        AnalyticsViewModel,
+        ({
+          AnalyticsViewState exportState,
+          String? exportError,
+          String? lastExportedPath,
+          String? exportType,
+        })>(
+      (vm) => (
+        exportState: vm.exportState,
+        exportError: vm.exportError,
+        lastExportedPath: vm.lastExportedPath,
+        exportType: vm.exportType,
+      ),
+    );
+    final analyticsViewModel = context.read<AnalyticsViewModel>();
+    final isLoading = state.exportState == AnalyticsViewState.loading;
 
     // Show snackbar on export error.
-    if (vm.exportState == AnalyticsViewState.error && vm.exportError != null) {
+    if (state.exportState == AnalyticsViewState.error &&
+        state.exportError != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(vm.exportError!),
+            content: Text(state.exportError!),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        vm.clearExportState();
+        analyticsViewModel.clearExportState();
       });
     }
 
     // Show snackbar on export success.
-    if (vm.exportState == AnalyticsViewState.success &&
-        vm.lastExportedPath != null) {
+    if (state.exportState == AnalyticsViewState.success &&
+        state.lastExportedPath != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -41,18 +57,18 @@ class ExportSection extends StatelessWidget {
             duration: const Duration(seconds: 3),
           ),
         );
-        vm.clearExportState();
+        analyticsViewModel.clearExportState();
       });
     }
 
-    final isLoadingExcel = isLoading && vm.exportType == 'excel';
-    final isLoadingPdf = isLoading && vm.exportType == 'pdf';
+    final isLoadingExcel = isLoading && state.exportType == 'excel';
+    final isLoadingPdf = isLoading && state.exportType == 'pdf';
 
     return Row(
       children: [
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: isLoading ? null : () => vm.exportExcel(),
+            onPressed: isLoading ? null : analyticsViewModel.exportExcel,
             icon: isLoadingExcel
                 ? const SizedBox(
                     width: 18,
@@ -77,7 +93,7 @@ class ExportSection extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: isLoading ? null : () => vm.exportPdf(),
+            onPressed: isLoading ? null : analyticsViewModel.exportPdf,
             icon: isLoadingPdf
                 ? const SizedBox(
                     width: 18,

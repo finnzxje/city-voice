@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -46,6 +45,7 @@ Future<void> main() async {
 
   // ── Core dependencies ──────────────────────────────────────────────────
   final storage = SecureStorageHelper();
+  storage.readSessionPresenceHintSync();
   final dio = DioClient.create(storage: storage);
 
   // ── Feature services ───────────────────────────────────────────────────
@@ -119,26 +119,4 @@ Future<void> main() async {
       child: const CityVoiceApp(),
     ),
   );
-
-  // Request location permission AFTER the UI is rendered.
-  _requestLocationPermission();
-}
-
-/// Requests location permission before the app launches.
-Future<void> _requestLocationPermission() async {
-  try {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      await Geolocator.openLocationSettings();
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-  } catch (_) {
-    // Swallow — location is not critical for app startup.
-  }
 }

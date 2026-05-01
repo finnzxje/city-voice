@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/utils/app_map_tile_layer.dart';
+
 /// Full-screen map picker for selecting a location.
 class MapPickerScreen extends StatefulWidget {
   final LatLng initialLocation;
@@ -45,17 +47,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
             options: MapOptions(
               initialCenter: _currentCenter,
               initialZoom: 16.0,
-              onPositionChanged: (position, hasGesture) {
-                if (hasGesture) {
-                  setState(() => _currentCenter = position.center);
-                }
+              onPositionChanged: (position, _) {
+                _currentCenter = position.center;
               },
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.cityvoice',
-              ),
+            children: const [
+              AppMapTileLayer(),
             ],
           ),
 

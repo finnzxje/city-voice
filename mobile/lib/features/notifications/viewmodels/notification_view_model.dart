@@ -40,29 +40,47 @@ class NotificationViewModel extends ChangeNotifier {
 
   final ListQueue<NotificationModel> _pendingPushNotifications = ListQueue();
   Timer? _pollTimer;
-  bool _initialized = false;
+  bool _isBadgeInitialized = false;
+  bool _isFullSnapshotInitialized = false;
   bool _isPolling = false;
+  _NotificationPollingMode _pollingMode = _NotificationPollingMode.none;
 
   // ── Initialisation ─────────────────────────────────────────────────────────
 
-  /// Call once after the user is authenticated.
+  /// Loads the full notification snapshot and switches polling to full mode.
   Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
+    _isBadgeInitialized = true;
 
-    await refresh();
+    if (!_isFullSnapshotInitialized) {
+      await refresh();
+      _isFullSnapshotInitialized = _errorMessage == null;
+    }
 
-    // Start polling every 30 seconds for new notifications.
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => _pollForNewNotifications(),
+    _startPolling(
+      _isFullSnapshotInitialized
+          ? _NotificationPollingMode.fullSnapshot
+          : _NotificationPollingMode.unreadCountOnly,
     );
+  }
+
+  /// Startup-friendly init that only resolves the badge count.
+  Future<void> initBadgeOnly() async {
+    if (!_isBadgeInitialized) {
+      _isBadgeInitialized = true;
+    }
+
+    await loadUnreadCount(clearError: true);
+
+    _startPolling(_NotificationPollingMode.unreadCountOnly);
   }
 
   // ── Load data ──────────────────────────────────────────────────────────────
 
   Future<void> refresh({bool showLoading = true}) async {
+    await loadNotifications(showLoading: showLoading);
+  }
+
+  Future<void> loadNotifications({bool showLoading = true}) async {
     if (showLoading) {
       _isLoading = true;
       _errorMessage = null;
@@ -72,6 +90,7 @@ class NotificationViewModel extends ChangeNotifier {
     try {
       final snapshot = await _fetchSnapshot();
       _applySnapshot(snapshot);
+      _isFullSnapshotInitialized = true;
     } on DioException catch (e) {
       _errorMessage = ApiErrorMessageResolver.fromDioException(e);
       notifyListeners();
@@ -86,28 +105,39 @@ class NotificationViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> loadNotifications() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+  Future<void> loadUnreadCount({
+    bool clearError = false,
+    bool forceRemote = false,
+  }) async {
+    if (!forceRemote && _isFullSnapshotInitialized) {
+      final unreadCount = _deriveUnreadCount(_notifications);
+      final shouldNotify =
+          _unreadCount != unreadCount || (clearError && _errorMessage != null);
 
-    try {
-      _notifications = await _notificationService.getNotifications();
-      _unreadCount = _notifications.where((n) => !n.isRead).length;
-    } on DioException catch (e) {
-      _errorMessage = ApiErrorMessageResolver.fromDioException(e);
-    } catch (e) {
-      _errorMessage = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      _unreadCount = unreadCount;
+      if (clearError) {
+        _errorMessage = null;
+      }
+
+      if (shouldNotify) {
+        notifyListeners();
+      }
+      return;
     }
-  }
 
-  Future<void> loadUnreadCount() async {
     try {
-      _unreadCount = await _notificationService.getUnreadCount();
-      notifyListeners();
+      final unreadCount = await _notificationService.getUnreadCount();
+      final shouldNotify =
+          _unreadCount != unreadCount || (clearError && _errorMessage != null);
+
+      _unreadCount = unreadCount;
+      if (clearError) {
+        _errorMessage = null;
+      }
+
+      if (shouldNotify) {
+        notifyListeners();
+      }
     } catch (_) {
       // Silent — badge will just show 0.
     }
@@ -130,6 +160,17 @@ class NotificationViewModel extends ChangeNotifier {
       _queuePushNotifications(freshNotifications);
     } catch (_) {
       // Silent — don't disrupt the user.
+    } finally {
+      _isPolling = false;
+    }
+  }
+
+  Future<void> _pollUnreadCount() async {
+    if (_isPolling) return;
+    _isPolling = true;
+
+    try {
+      await loadUnreadCount(forceRemote: true);
     } finally {
       _isPolling = false;
     }
@@ -172,15 +213,20 @@ class NotificationViewModel extends ChangeNotifier {
 
     if (unreadIds.isEmpty) return;
 
-    await Future.wait(
-      unreadIds.map((id) => _notificationService.markAsRead(id)),
-    );
+    try {
+      await _notificationService.markAllAsRead(unreadIds);
+      _notifications = _notifications
+          .map((n) => n.isRead ? n : n.copyWith(isRead: true))
+          .toList();
+      _unreadCount = 0;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[NotifVM] markAllAsRead failed: $e');
+    }
+  }
 
-    _notifications = _notifications
-        .map((n) => n.isRead ? n : n.copyWith(isRead: true))
-        .toList();
-    _unreadCount = 0;
-    notifyListeners();
+  void useBadgeOnlyPolling() {
+    _startPolling(_NotificationPollingMode.unreadCountOnly);
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
@@ -189,8 +235,10 @@ class NotificationViewModel extends ChangeNotifier {
   void stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
-    _initialized = false;
+    _isBadgeInitialized = false;
+    _isFullSnapshotInitialized = false;
     _isPolling = false;
+    _pollingMode = _NotificationPollingMode.none;
     _notifications = [];
     _unreadCount = 0;
     _errorMessage = null;
@@ -199,14 +247,11 @@ class NotificationViewModel extends ChangeNotifier {
   }
 
   Future<_NotificationSnapshot> _fetchSnapshot() async {
-    final results = await Future.wait<Object>([
-      _notificationService.getNotifications(),
-      _notificationService.getUnreadCount(),
-    ]);
+    final notifications = await _notificationService.getNotifications();
 
     return _NotificationSnapshot(
-      notifications: results[0] as List<NotificationModel>,
-      unreadCount: results[1] as int,
+      notifications: notifications,
+      unreadCount: _deriveUnreadCount(notifications),
     );
   }
 
@@ -222,6 +267,17 @@ class NotificationViewModel extends ChangeNotifier {
     if (shouldNotify) {
       notifyListeners();
     }
+  }
+
+  int _deriveUnreadCount(List<NotificationModel> notifications) {
+    var unreadCount = 0;
+    for (final notification in notifications) {
+      if (!notification.isRead) {
+        unreadCount += 1;
+      }
+    }
+
+    return unreadCount;
   }
 
   bool _hasNotificationListChanged(List<NotificationModel> next) {
@@ -246,11 +302,34 @@ class NotificationViewModel extends ChangeNotifier {
     return false;
   }
 
+  void _startPolling(_NotificationPollingMode mode) {
+    final shouldRestart = _pollTimer == null || _pollingMode != mode;
+    if (!shouldRestart) {
+      return;
+    }
+
+    _pollTimer?.cancel();
+    _pollingMode = mode;
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mode == _NotificationPollingMode.fullSnapshot) {
+        _pollForNewNotifications();
+      } else {
+        _pollUnreadCount();
+      }
+    });
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
   }
+}
+
+enum _NotificationPollingMode {
+  none,
+  unreadCountOnly,
+  fullSnapshot,
 }
 
 class _NotificationSnapshot {

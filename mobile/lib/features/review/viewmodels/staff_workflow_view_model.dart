@@ -15,6 +15,7 @@ import '../services/staff_report_service.dart';
 class StaffWorkflowViewModel extends ChangeNotifier {
   final StaffReportService _service;
   final CategoryService _categoryService;
+  int _reportsRequestId = 0;
 
   StaffWorkflowViewModel({
     required StaffReportService service,
@@ -92,6 +93,7 @@ class StaffWorkflowViewModel extends ChangeNotifier {
 
   /// Loads reports with the current filters + page applied via API query params.
   Future<void> loadReports({int page = 0}) async {
+    final requestId = ++_reportsRequestId;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -104,16 +106,30 @@ class StaffWorkflowViewModel extends ChangeNotifier {
         page: page,
         size: pageSize,
       );
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _reports = result.reports;
       _currentPage = result.currentPage;
       _totalPages = result.totalPages;
     } on DioException catch (e) {
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _errorMessage = ApiErrorMessageResolver.fromDioException(e);
     } catch (e) {
+      if (!_isCurrentReportsRequest(requestId)) {
+        return;
+      }
+
       _errorMessage = e.toString();
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_isCurrentReportsRequest(requestId)) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -158,26 +174,23 @@ class StaffWorkflowViewModel extends ChangeNotifier {
 
   /// Loads a single report detail.
   Future<void> loadReportDetail(String reportId) async {
+    final cachedReport = _reportFromCache(reportId);
+
     _isLoading = true;
     _errorMessage = null;
-    _selectedReport = null;
+    _selectedReport = cachedReport;
     notifyListeners();
 
     try {
-      // Find in cached list first
-      final cached = _reports.where((r) => r.id == reportId).toList();
-      if (cached.isNotEmpty) {
-        _selectedReport = cached.first;
-      } else {
-        // Fallback: fetch all and find
-        final result = await _service.getReports(size: 100);
-        _selectedReport =
-            result.reports.where((r) => r.id == reportId).firstOrNull;
-      }
+      final detail = await _service.getReportById(reportId);
+      _replaceReport(detail);
+      _selectedReport = detail;
     } on DioException catch (e) {
       _errorMessage = ApiErrorMessageResolver.fromDioException(e);
+      _selectedReport = cachedReport;
     } catch (e) {
       _errorMessage = e.toString();
+      _selectedReport = cachedReport;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -291,6 +304,19 @@ class StaffWorkflowViewModel extends ChangeNotifier {
     if (index >= 0) {
       _reports = List<Report>.from(_reports)..[index] = updated;
     }
-    notifyListeners();
+  }
+
+  Report? _reportFromCache(String reportId) {
+    for (final report in _reports) {
+      if (report.id == reportId) {
+        return report;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isCurrentReportsRequest(int requestId) {
+    return requestId == _reportsRequestId;
   }
 }

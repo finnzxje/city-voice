@@ -2,28 +2,45 @@ import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../models/stats_model.dart';
 import '../../viewmodels/analytics_view_model.dart';
 import 'error_retry_widget.dart';
 
 /// Section containing category pie chart, priority bar chart, and zone chart.
 class ChartsSection extends StatelessWidget {
-  final AnalyticsViewModel vm;
-
-  const ChartsSection({super.key, required this.vm});
+  const ChartsSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (vm.statsState == AnalyticsViewState.error) {
+    final state = context.select<
+        AnalyticsViewModel,
+        ({
+          AnalyticsViewState statsState,
+          String? statsError,
+          StatsModel? stats,
+        })>(
+      (vm) => (
+        statsState: vm.statsState,
+        statsError: vm.statsError,
+        stats: vm.stats,
+      ),
+    );
+    final analyticsViewModel = context.read<AnalyticsViewModel>();
+
+    if (state.statsState == AnalyticsViewState.error) {
       return ErrorRetryWidget(
-        message: vm.statsError ?? 'Lỗi tải dữ liệu',
-        onRetry: vm.loadDashboard,
+        message: state.statsError ?? 'Lỗi tải dữ liệu',
+        onRetry: analyticsViewModel.loadDashboard,
       );
     }
 
-    final stats = vm.stats;
-    if (stats == null) return const SizedBox.shrink();
+    final stats = state.stats;
+    if (stats == null) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [

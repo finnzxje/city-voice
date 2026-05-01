@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/viewmodels/auth_view_model.dart';
 import '../../viewmodels/staff_workflow_view_model.dart';
+import 'review_action_bottom_sheet_layout.dart';
 
 /// Bottom sheet for reviewing (approving) a report.
 class ReviewBottomSheet extends StatefulWidget {
@@ -19,28 +20,27 @@ class ReviewBottomSheet extends StatefulWidget {
 class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
   String _selectedPriority = 'medium';
   late final TextEditingController _noteController;
-  late final TextEditingController _assignedToController;
 
   @override
   void initState() {
     super.initState();
     _noteController = TextEditingController();
-    final authVm = context.read<AuthViewModel>();
-    _assignedToController = TextEditingController(text: authVm.user?.id ?? '');
   }
 
   @override
   void dispose() {
     _noteController.dispose();
-    _assignedToController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    final assignedTo = _assignedToController.text.trim();
+    final assignedTo = context.read<AuthViewModel>().user?.id.trim() ?? '';
     if (assignedTo.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Vui lòng nhập UUID nhân viên phụ trách')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không xác định được nhân viên đang đăng nhập'),
+        ),
+      );
       return;
     }
     final vm = context.read<StaffWorkflowViewModel>();
@@ -65,28 +65,12 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return ReviewActionBottomSheetLayout(
+      title: 'Duyệt báo cáo',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Duyệt báo cáo',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop()),
-            ],
-          ),
-          const SizedBox(height: 20),
           const Text('Mức ưu tiên *',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
@@ -108,20 +92,6 @@ class _ReviewBottomSheetState extends State<ReviewBottomSheet> {
             onChanged: (v) {
               if (v != null) setState(() => _selectedPriority = v);
             },
-          ),
-          const SizedBox(height: 16),
-          const Text('Phân công cho (UUID) *',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _assignedToController,
-            decoration: InputDecoration(
-              hintText: 'UUID nhân viên phụ trách',
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
           ),
           const SizedBox(height: 16),
           const Text('Ghi chú',
