@@ -1,4 +1,5 @@
 import 'package:city_voice/core/auth/user_role.dart';
+import 'package:city_voice/core/routes/app_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -11,10 +12,10 @@ void main() {
     });
 
     test('maps each role to the correct home route', () {
-      expect(UserRole.admin.homeRoute, '/admin-dashboard');
-      expect(UserRole.manager.homeRoute, '/analytics');
-      expect(UserRole.staff.homeRoute, '/staff-dashboard');
-      expect(UserRole.citizen.homeRoute, '/dashboard');
+      expect(UserRole.admin.homeRoute, AppRoutePaths.adminDashboard);
+      expect(UserRole.manager.homeRoute, AppRoutePaths.analytics);
+      expect(UserRole.staff.homeRoute, AppRoutePaths.staffDashboard);
+      expect(UserRole.citizen.homeRoute, AppRoutePaths.dashboard);
     });
   });
 }

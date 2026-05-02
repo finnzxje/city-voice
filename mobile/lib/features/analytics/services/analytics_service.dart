@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/constants/api_constants.dart';
+import '../../../core/network/api_payload_parser.dart';
 import '../models/analytics_filter.dart';
 import '../models/heatmap_point.dart';
 import '../models/stats_model.dart';
@@ -40,16 +41,12 @@ class AnalyticsService {
       ApiConstants.analyticsStats,
       queryParameters: filter.toQueryParams(),
     );
-    final data = response.data;
-
-    if (data is Map<String, dynamic>) {
-      // Wrapped: { "code": 200, "data": {...} }
-      if (data.containsKey('data') && data['data'] is Map<String, dynamic>) {
-        return StatsModel.fromJson(data['data'] as Map<String, dynamic>);
-      }
-      return StatsModel.fromJson(data);
-    }
-    throw Exception('Unexpected stats response format');
+    return StatsModel.fromJson(
+      ApiPayloadParser.requireObject(
+        response.data,
+        errorMessage: 'Unexpected stats response format',
+      ),
+    );
   }
 
   /// Downloads an export file (Excel or PDF) as raw bytes.
@@ -69,19 +66,7 @@ class AnalyticsService {
   }
 
   List<Map<String, dynamic>> _extractHeatmapPayload(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final rawPayload = data['data'];
-      if (rawPayload is List) {
-        return _copyHeatmapPayload(rawPayload);
-      }
-      return const <Map<String, dynamic>>[];
-    }
-
-    if (data is List) {
-      return _copyHeatmapPayload(data);
-    }
-
-    return const <Map<String, dynamic>>[];
+    return _copyHeatmapPayload(ApiPayloadParser.listData(data));
   }
 }
 
@@ -93,7 +78,5 @@ List<Map<String, dynamic>> _copyHeatmapPayload(List<dynamic> rawItems) {
 }
 
 List<HeatmapPoint> _parseHeatmapPayload(List<Map<String, dynamic>> payload) {
-  return payload
-      .map(HeatmapPoint.fromJson)
-      .toList(growable: false);
+  return payload.map(HeatmapPoint.fromJson).toList(growable: false);
 }

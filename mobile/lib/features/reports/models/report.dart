@@ -104,4 +104,8 @@ class Report {
       _ => priority,
     };
   }
+
+  String get coordinatesText {
+    return '${latitude.toStringAsFixed(5)}, ${longitude.toStringAsFixed(5)}';
+  }
 }

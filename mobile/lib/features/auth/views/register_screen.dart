@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../viewmodels/auth_view_model.dart';
 
@@ -42,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (success && mounted) {
-      context.go('/verify-email?email=${Uri.encodeComponent(email)}');
+      context.go(AppRoutePaths.verifyEmailLocation(email: email));
     }
   }
 
@@ -238,7 +240,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => context.go('/login'),
+                        onTap: () => context.go(AppRoutePaths.login),
                         child: Text(
                           'Đăng nhập tại đây',
                           style: theme.textTheme.bodyMedium?.copyWith(

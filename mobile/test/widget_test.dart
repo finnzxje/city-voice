@@ -6,6 +6,7 @@ import 'package:city_voice/features/auth/viewmodels/auth_view_model.dart';
 import 'package:city_voice/features/notifications/services/notification_service.dart';
 import 'package:city_voice/features/notifications/viewmodels/notification_view_model.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -41,9 +42,33 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
-    expect(find.text('Chào mừng trở lại'), findsOneWidget);
+    await _pumpUntilFound(
+      tester,
+      find.text('Chào mừng trở lại'),
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    appRouter.router.dispose();
+    notificationViewModel.dispose();
+    authViewModel.dispose();
+    storage.dispose();
   });
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int maxAttempts = 20,
+}) async {
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+
+  expect(finder, findsOneWidget);
 }
 
 class _InMemorySecureStorageHelper extends SecureStorageHelper {

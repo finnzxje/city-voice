@@ -48,10 +48,7 @@ final class ReportDetailPresenter {
   String get administrativeZoneName =>
       report.administrativeZoneName ?? 'Hồ Chí Minh';
 
-  String get coordinatesText {
-    return '${report.latitude.toStringAsFixed(5)}, '
-        '${report.longitude.toStringAsFixed(5)}';
-  }
+  String get coordinatesText => report.coordinatesText;
 
   String get bottomStatusText {
     return switch (report.currentStatus) {

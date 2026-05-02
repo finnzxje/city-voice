@@ -5,12 +5,14 @@ library;
 class ApiConstants {
   ApiConstants._(); // prevent instantiation
 
-  static const String localhost = 'http://10.251.0.144';
+  static const String localhost = 'http://192.168.1.8';
 
   // ── Base URL ───────────────────────────────────────────────────────────────
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '$localhost:8080/api',
+    // defaultValue:
+    //     'https://cambridge-union-promised-survive.trycloudflare.com/api',
   );
 
   // ── Auth endpoints ─────────────────────────────────────────────────────────

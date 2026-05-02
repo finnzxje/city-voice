@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_constants.dart';
-import '../../../core/network/api_response.dart';
+import '../../../core/network/api_payload_parser.dart';
 import '../models/incident_category.dart';
 
 /// Service for fetching incident categories.
@@ -19,30 +19,10 @@ class CategoryService {
         _cacheTtl = cacheTtl;
 
   List<IncidentCategory> _parseCategoryList(dynamic data) {
-    if (data is Map<String, dynamic> && data.containsKey('data')) {
-      final apiResponse = ApiResponse<List<IncidentCategory>>.fromJson(
-        data,
-        fromJsonT: (json) {
-          if (json is List) {
-            return json
-                .map((item) =>
-                    IncidentCategory.fromJson(item as Map<String, dynamic>))
-                .toList();
-          }
-          return <IncidentCategory>[];
-        },
-      );
-      return apiResponse.data ?? [];
-    }
-
-    if (data is List) {
-      return data
-          .map(
-              (item) => IncidentCategory.fromJson(item as Map<String, dynamic>))
-          .toList();
-    }
-
-    return [];
+    return ApiPayloadParser.parseList(
+      data,
+      fromJson: IncidentCategory.fromJson,
+    );
   }
 
   /// Fetches all active categories.

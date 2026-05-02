@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../notifications/viewmodels/notification_view_model.dart';
@@ -233,7 +234,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/reports/new'),
+        onPressed: () => context.push(AppRoutePaths.submitReport),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 4,
@@ -277,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Stack(
             children: [
               IconButton(
-                onPressed: () => context.push('/notifications'),
+                onPressed: () => context.push(AppRoutePaths.notifications),
                 icon: const Icon(Icons.notifications_outlined),
                 iconSize: 28,
                 color: AppColors.textPrimary,
@@ -315,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               context.read<NotificationViewModel>().stopPolling();
               final router = GoRouter.of(context);
               await authVm.logout();
-              router.go('/login');
+              router.go(AppRoutePaths.login);
             },
             icon: const Icon(Icons.logout_rounded),
             color: AppColors.textSecondary,

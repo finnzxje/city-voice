@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/user_role.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../viewmodels/auth_view_model.dart';
 
@@ -89,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen>
           if (error.toLowerCase().contains('xác thực') ||
               error.toLowerCase().contains('verify') ||
               error.toLowerCase().contains('active')) {
-            context.push('/verify-email?email=${Uri.encodeComponent(email)}');
+            context.push(AppRoutePaths.verifyEmailLocation(email: email));
             return;
           }
         }
@@ -422,7 +423,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               GestureDetector(
-                onTap: () => context.push('/register'),
+                onTap: () => context.push(AppRoutePaths.register),
                 child: Text(
                   'Đăng ký ngay',
                   style: theme.textTheme.bodyMedium?.copyWith(

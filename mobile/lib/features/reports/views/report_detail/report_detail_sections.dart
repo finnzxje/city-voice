@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/widgets/report_location_map_screen.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_cached_network_image.dart';
 import '../../../../core/utils/app_map_tile_layer.dart';
@@ -231,8 +232,6 @@ class ReportDetailLocationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final markerLocation = LatLng(report.latitude, report.longitude);
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -247,31 +246,9 @@ class ReportDetailLocationCard extends StatelessWidget {
             child: SizedBox(
               width: 88,
               height: 88,
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: markerLocation,
-                  initialZoom: 15,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.none,
-                  ),
-                ),
-                children: [
-                  const AppMapTileLayer(),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: markerLocation,
-                        width: 30,
-                        height: 30,
-                        child: const Icon(
-                          Icons.location_on,
-                          color: Colors.redAccent,
-                          size: 24,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              child: _ReportDetailLocationMapPreview(
+                report: report,
+                presenter: presenter,
               ),
             ),
           ),
@@ -312,6 +289,92 @@ class ReportDetailLocationCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReportDetailLocationMapPreview extends StatelessWidget {
+  const _ReportDetailLocationMapPreview({
+    required this.report,
+    required this.presenter,
+  });
+
+  final Report report;
+  final ReportDetailPresenter presenter;
+
+  @override
+  Widget build(BuildContext context) {
+    final markerLocation = LatLng(report.latitude, report.longitude);
+
+    return Material(
+      color: AppColors.surface.withValues(alpha: 0),
+      child: InkWell(
+        onTap: () => ReportLocationMapScreen.open(
+          context,
+          latitude: report.latitude,
+          longitude: report.longitude,
+          coordinatesText: presenter.coordinatesText,
+          locationName: presenter.administrativeZoneName,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AbsorbPointer(
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: markerLocation,
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  const AppMapTileLayer(),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: markerLocation,
+                        width: 30,
+                        height: 30,
+                        child: const Icon(
+                          Icons.location_on,
+                          color: AppColors.error,
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 6,
+              right: 6,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.textPrimary.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.open_in_full_rounded,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

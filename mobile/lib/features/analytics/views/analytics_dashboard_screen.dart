@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/auth/user_role.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/viewmodels/auth_view_model.dart';
 import '../../reports/services/category_service.dart';
@@ -56,7 +57,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 onPressed: () async {
                   final authVm = context.read<AuthViewModel>();
                   await authVm.logout();
-                  if (context.mounted) context.go('/login');
+                  if (context.mounted) context.go(AppRoutePaths.login);
                 },
               )
             : null,

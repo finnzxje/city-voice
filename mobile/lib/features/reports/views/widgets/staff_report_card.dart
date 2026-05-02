@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_cached_network_image.dart';
 import '../../../../core/utils/utils.dart';
@@ -48,7 +49,8 @@ class StaffHorizontalReportCard extends StatelessWidget {
                 ),
               );
             },
-            onTap: () => context.push('/staff-reports/${report.id}'),
+            onTap: () =>
+                context.push(AppRoutePaths.staffReportDetail(report.id)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
