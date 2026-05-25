@@ -58,7 +58,7 @@ CityVoice is a civic infrastructure reporting platform scoped exclusively to **H
 ## Module 4: Identity & Access Management (System Core)
 
 ### Authentication
-- **Citizens:** Register/login via Email + OTP (no password). OTP tokens stored in `otp_tokens` table with expiry.
+- **Citizens:** Self-register with email + password, complete email verification through OTP, then log in with either email + password or email + OTP. OTP tokens are stored in `otp_tokens` with expiry for email verification and OTP login.
 - **Staff, Managers & Admins:** Login with pre-provisioned email + bcrypt password. Account provisioning is **hybrid**:
   - Initial staff and one admin account are seeded for testing via migration.
   - Admins can assign/change `staff`, `manager`, or `admin` roles to any user.

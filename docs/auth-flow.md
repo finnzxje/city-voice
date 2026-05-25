@@ -38,17 +38,18 @@ All API responses follow a unified structure:
 
 ## 1. Citizen Registration & Email Verification
 
-New citizens must verify their email before they can log in. A fresh account has `isActive: false` and all login attempts will be rejected until verification is complete.
+New citizens register with an email and password. The backend stores the encoded password, creates the account with `isActive: false`, and sends an email-verification OTP. Both password login and OTP login are rejected until verification is complete.
 
 POST /auth/citizen/register
-→ returns: { "code": 201, "message": "Đăng ký thành công. Vui lòng kiểm tra email để xác thực.", "data": null }
+Body: { "email": "...", "password": "...", "fullName": "...", "phoneNumber": "..." }
+→ returns: { "code": 201, "message": "Tài khoản đã được tạo. Vui lòng kiểm tra email để lấy mã xác thực.", "data": null }
 
 POST /auth/citizen/verify-email   { email, otp }
-→ returns: { "code": 200, "message": "Xác thực email thành công.", "data": null }
+→ returns: { "code": 200, "message": "Email đã được xác thực. Bạn có thể đăng nhập ngay bây giờ.", "data": null }
 
 # If OTP expired or lost:
 POST /auth/citizen/resend-verification  { email }
-→ returns: { "code": 200, "message": "Mã xác thực mới đã được gửi.", "data": null }
+→ returns: { "code": 200, "message": "Mã xác thực đã được gửi lại.", "data": null }
 
 **Flow diagram:**
 
@@ -62,7 +63,7 @@ Register → [Email arrives] → Verify OTP → ✅ Active Account
 
 ## 2. Citizen Login
 
-Verified citizens have two login options. Both return the same token pair.
+Verified citizens have two supported login options. Password login is a regular citizen login path, not a development bypass. Both paths return the same token pair.
 
 ### Option A: Password Login
 
@@ -86,7 +87,7 @@ Body: { "email": "...", "password": "..." }
 
 ```
 POST /auth/citizen/request-otp   { email }
-→ returns: { "code": 200, "message": "Mã OTP đã được gửi.", "data": null }
+→ returns: { "code": 200, "message": "Mã đăng nhập đã được gửi đến email của bạn.", "data": null }
 
 POST /auth/citizen/verify-otp    { email, otp }
 → Returns: 
@@ -131,7 +132,7 @@ Body: { "email": "...", "password": "..." }
 > | **STAFF** | `staff@cityvoice.vn` | `Staff@123` |
 > | **CITIZEN** | `citizen@cityvoice.vn` | `Citizen@123` |
 > 
-> *(Admins/Managers/Staff log in via Password. Citizens usually log in via OTP, but can use the hashed password if testing API bypasses).*
+> *(Admins/Managers/Staff log in via password. Verified citizens can log in using either the seeded password or an OTP.)*
 > ⚠️ **Change the Admin password immediately in production.**
 
 ---
