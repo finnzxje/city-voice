@@ -126,6 +126,32 @@ class ReportWorkflowIntegrationTest {
         verifyNoInteractions(storageService);
     }
 
+    @Test
+    void tc07_citizenOnlySeesTheirOwnReports() {
+        User citizen = newCitizen("TC-07 Owner");
+        User otherCitizen = newCitizen("TC-07 Other");
+        ReportResponse ownReport = submitValidReport(citizen, "tc07-owner.jpg");
+        ReportResponse otherReport = submitValidReport(otherCitizen, "tc07-other.jpg");
+
+        List<ReportResponse> visibleReports = reportService.getMyReports(citizen);
+
+        assertThat(visibleReports)
+                .extracting(ReportResponse::getId)
+                .contains(ownReport.getId())
+                .doesNotContain(otherReport.getId());
+    }
+
+    @Test
+    void tc08_citizenCannotViewAnotherCitizensReport() {
+        User citizen = newCitizen("TC-08 Viewer");
+        User otherCitizen = newCitizen("TC-08 Owner");
+        ReportResponse otherReport = submitValidReport(otherCitizen, "tc08-other.jpg");
+
+        assertThatThrownBy(() -> reportService.getReportById(otherReport.getId(), citizen))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
     private User newCitizen(String caseId) {
         return userRepository.save(User.builder()
                 .email(caseId.toLowerCase() + "-" + UUID.randomUUID() + "@cityvoice.vn")
@@ -144,5 +170,14 @@ class ReportWorkflowIntegrationTest {
         request.setLongitude(longitude);
         request.setImage(TestImages.jpeg("image"));
         return request;
+    }
+
+    private ReportResponse submitValidReport(User citizen, String imageFileName) {
+        Category category = categoryRepository.findAllByIsActiveTrue().stream()
+                .findFirst()
+                .orElseThrow();
+        when(storageService.store(any(), eq("incidents")))
+                .thenReturn("http://storage.test/cityvoice-reports/incidents/" + imageFileName);
+        return reportService.submitReport(submissionRequest(category.getId(), 10.7769, 106.7009), citizen);
     }
 }
