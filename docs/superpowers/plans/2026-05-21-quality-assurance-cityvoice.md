@@ -99,11 +99,11 @@ Create `docs/qa/traceability-matrix.md` with this structure:
 | TC-18 | UC-06 | Manager loads stats | GET /analytics/stats | Manager dashboard | reports, categories, administrative_zones | `AnalyticsIntegrationTest.tc18_managerLoadsAggregateStatsForMatchingReports` | Manual: dashboard stats visible | Implemented (service integration) |
 | TC-19 | UC-06 | Manager loads heatmap | GET /analytics/heatmap | Manager heatmap | reports | `AnalyticsIntegrationTest.tc19_managerLoadsHeatmapCoordinatesForMatchingReports` | Manual: heatmap points visible | Implemented (service integration) |
 | TC-20 | UC-06 | Invalid date range rejected | GET /analytics/stats or /heatmap | Manager dashboard filters | reports | `AnalyticsIntegrationTest.tc20_invalidDateRangeIsRejected` | Manual: invalid date filter | Implemented (service integration) |
-| TC-21 | UC-07 | Export PDF | GET /analytics/export/pdf | Manager export action | reports | Backend integration Content-Type application/pdf | Manual: file opens as PDF | Planned |
-| TC-22 | UC-07 | Export Excel | GET /analytics/export/excel | Manager export action | reports | Backend integration xlsx Content-Type | Manual: file opens in spreadsheet app | Planned |
-| TC-23 | UC-08 | Admin creates category | POST /categories | Admin categories tab | categories | Backend integration returns 201 | Manual: create category | Planned |
-| TC-24 | UC-08 | Duplicate slug blocked | POST/PUT /categories | Admin categories tab | categories | Backend integration returns 409 | Manual: duplicate slug | Planned |
-| TC-25 | UC-08 | Inactive category hidden from citizen form | GET /categories | Citizen submit form | categories | Backend integration excludes inactive | Manual: inactive category hidden | Planned |
+| TC-21 | UC-07 | Export PDF | GET /analytics/export/pdf | Manager export action | reports | `AnalyticsIntegrationTest.tc21_managerExportsMatchingReportsAsPdf` | Manual: file opens as PDF | Implemented (controller/service integration) |
+| TC-22 | UC-07 | Export Excel | GET /analytics/export/excel | Manager export action | reports | `AnalyticsIntegrationTest.tc22_managerExportsMatchingReportsAsExcel` | Manual: file opens in spreadsheet app | Implemented (controller/service integration) |
+| TC-23 | UC-08 | Admin creates category | POST /categories | Admin categories tab | categories | `CategoryIntegrationTest.tc23_adminCreatesActiveCategory` | Manual: create category | Implemented (controller/service integration) |
+| TC-24 | UC-08 | Duplicate slug blocked | POST/PUT /categories | Admin categories tab | categories | `CategoryIntegrationTest.tc24_adminCannotCreateDuplicateCategorySlug` | Manual: duplicate slug | Implemented (controller/service integration) |
+| TC-25 | UC-08 | Inactive category hidden from citizen form | GET /categories | Citizen submit form | categories | `CategoryIntegrationTest.tc25_inactiveCategoryIsHiddenFromCitizenCategoryList` | Manual: inactive category hidden | Implemented (controller/service integration) |
 ```
 
 - [ ] **Step 3: Commit traceability**
@@ -318,6 +318,11 @@ Each test must set up users, categories, reports, and tokens through repositorie
 | TC-18 | `AnalyticsIntegrationTest.tc18_managerLoadsAggregateStatsForMatchingReports` | Spring service/database integration asserting category-filtered report summary aggregation | Implemented and passed |
 | TC-19 | `AnalyticsIntegrationTest.tc19_managerLoadsHeatmapCoordinatesForMatchingReports` | Spring service/database integration asserting category-filtered heatmap coordinate output | Implemented and passed |
 | TC-20 | `AnalyticsIntegrationTest.tc20_invalidDateRangeIsRejected` | Spring service integration asserting an inverted analytics date range is rejected before querying reports | Implemented and passed |
+| TC-21 | `AnalyticsIntegrationTest.tc21_managerExportsMatchingReportsAsPdf` | Authenticated manager controller/service integration asserting PDF content type and generated PDF payload | Implemented and passed |
+| TC-22 | `AnalyticsIntegrationTest.tc22_managerExportsMatchingReportsAsExcel` | Authenticated manager controller/service integration asserting Excel content type and workbook output | Implemented and passed |
+| TC-23 | `CategoryIntegrationTest.tc23_adminCreatesActiveCategory` | Authenticated admin controller/database integration asserting `201 Created` and persisted category | Implemented and passed |
+| TC-24 | `CategoryIntegrationTest.tc24_adminCannotCreateDuplicateCategorySlug` | Authenticated admin controller/service integration asserting duplicate slug conflict | Implemented and passed |
+| TC-25 | `CategoryIntegrationTest.tc25_inactiveCategoryIsHiddenFromCitizenCategoryList` | Controller/database integration asserting inactive categories are excluded from the public active list | Implemented and passed |
 
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` was confirmed passing by the developer on 2026-05-26 after adding `TC-04` and `TC-05`. This test class verifies valid report persistence with default `medium` priority, initial `status_history` persistence (`TC-06`), PostGIS rejection for a location outside HCMC, and rejection of an unknown category before storage interaction. HTTP authentication/multipart routing and real MinIO storage remain for later API/E2E coverage.
 
@@ -330,6 +335,10 @@ Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowInt
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=AnalyticsIntegrationTest` first reproduced the `TC-20` defect on 2026-05-27: 1 test ran with one failure because analytics accepted an inverted date range. After adding centralized date-order validation in `AnalyticsService`, `cd backend && ./mvnw clean test -Dtest=AnalyticsIntegrationTest,ReportWorkflowIntegrationTest` executed with 12 tests run, 0 failures, and 0 errors. This verifies invalid analytics date windows are rejected with `400 Bad Request` while preserving existing report workflow behavior.
 
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportUploadHttpIntegrationTest` first reproduced the `TC-15` defect on 2026-05-27: 2 tests ran with one failure because a missing proof-image multipart part produced `500 Internal Server Error`. After mapping `MissingServletRequestPartException` to `400 Bad Request` in `GlobalExceptionHandler`, the same test command executed with 2 tests run, 0 failures, and 0 errors. Additional targeted runs passed for `ReportWorkflowIntegrationTest` with 13 tests after adding `TC-16` and `TC-17`, and `AnalyticsIntegrationTest` with 3 tests after adding `TC-18` and `TC-19`.
+
+Verification evidence: `cd backend && ./mvnw clean test -Dtest=AnalyticsIntegrationTest,CategoryIntegrationTest` executed on 2026-05-27 with 8 tests run, 0 failures, and 0 errors after adding `TC-21` through `TC-25`. This verifies authenticated manager PDF/Excel exports produce expected media types and usable output, while authenticated admin category creation, duplicate-slug rejection, and public active-category filtering behave as planned.
+
+Final backend verification evidence: `cd backend && ./mvnw clean test` executed on 2026-05-27 with 31 tests run, 0 failures, and 0 errors after completing automated coverage for `TC-01` through `TC-25`.
 
 Verification evidence: `cd backend && ./mvnw test -Dtest=MinioStorageServiceTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies that an `application/pdf` incident image is rejected with `400 Bad Request` before any MinIO API interaction. HTTP multipart routing remains for later API/E2E coverage.
 

@@ -3,6 +3,7 @@ package com.cityvoice.analytics;
 import com.cityvoice.analytics.dto.AnalyticsFilterRequest;
 import com.cityvoice.analytics.dto.AnalyticsStatsDto;
 import com.cityvoice.analytics.dto.HeatmapPointDto;
+import com.cityvoice.analytics.controller.AnalyticsController;
 import com.cityvoice.analytics.service.AnalyticsService;
 import com.cityvoice.report.dto.ReportResponse;
 import com.cityvoice.report.dto.SubmitReportRequest;
@@ -15,15 +16,25 @@ import com.cityvoice.testsupport.TestImages;
 import com.cityvoice.user.entity.User;
 import com.cityvoice.user.enums.UserRole;
 import com.cityvoice.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +53,8 @@ class AnalyticsIntegrationTest {
     @Autowired
     private AnalyticsService analyticsService;
     @Autowired
+    private AnalyticsController analyticsController;
+    @Autowired
     private ReportService reportService;
     @Autowired
     private UserRepository userRepository;
@@ -50,6 +63,19 @@ class AnalyticsIntegrationTest {
 
     @MockitoBean
     private StorageService storageService;
+
+    @BeforeEach
+    void authenticateManager() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                "manager",
+                "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_MANAGER"))));
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void tc18_managerLoadsAggregateStatsForMatchingReports() {
@@ -96,6 +122,40 @@ class AnalyticsIntegrationTest {
         assertThatThrownBy(() -> analyticsService.getStats(filter))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void tc21_managerExportsMatchingReportsAsPdf() {
+        Category category = newCategory("TC-21");
+        User citizen = newCitizen("TC-21");
+        submitReport(category, citizen, "tc21.jpg", 10.7769, 106.7009);
+
+        ResponseEntity<byte[]> response = analyticsController.exportPdf(filterByCategory(category));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
+        assertThat(response.getBody()).isNotNull()
+                .startsWith("%PDF-".getBytes(StandardCharsets.US_ASCII));
+    }
+
+    @Test
+    void tc22_managerExportsMatchingReportsAsExcel() throws Exception {
+        Category category = newCategory("TC-22");
+        User citizen = newCitizen("TC-22");
+        submitReport(category, citizen, "tc22.jpg", 10.7769, 106.7009);
+
+        ResponseEntity<byte[]> response = analyticsController.exportExcel(filterByCategory(category));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        assertThat(response.getBody()).isNotNull();
+        try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(response.getBody()))) {
+            var sheet = workbook.getSheet("Incident Reports");
+            assertThat(sheet).isNotNull();
+            assertThat(sheet.getPhysicalNumberOfRows()).isEqualTo(2);
+            assertThat(sheet.getRow(1).getCell(2).getStringCellValue()).isEqualTo(category.getName());
+        }
     }
 
     private Category newCategory(String caseId) {
