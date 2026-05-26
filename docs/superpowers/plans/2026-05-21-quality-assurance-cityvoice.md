@@ -98,7 +98,7 @@ Create `docs/qa/traceability-matrix.md` with this structure:
 | TC-17 | UC-05 | Resolve creates notifications and resolvedAt | POST /reports/{id}/resolve | Citizen notifications; report detail | reports, notifications | Repository assertion | Manual: citizen notification and detail | Planned |
 | TC-18 | UC-06 | Manager loads stats | GET /analytics/stats | Manager dashboard | reports, categories, administrative_zones | Backend integration returns aggregate DTO | Manual: dashboard stats visible | Planned |
 | TC-19 | UC-06 | Manager loads heatmap | GET /analytics/heatmap | Manager heatmap | reports | Backend integration returns coordinate list | Manual: heatmap points visible | Planned |
-| TC-20 | UC-06 | Invalid date range rejected | GET /analytics/stats or /heatmap | Manager dashboard filters | reports | Backend integration from > to returns 400 | Manual: invalid date filter | Planned |
+| TC-20 | UC-06 | Invalid date range rejected | GET /analytics/stats or /heatmap | Manager dashboard filters | reports | `AnalyticsIntegrationTest.tc20_invalidDateRangeIsRejected` | Manual: invalid date filter | Implemented (service integration) |
 | TC-21 | UC-07 | Export PDF | GET /analytics/export/pdf | Manager export action | reports | Backend integration Content-Type application/pdf | Manual: file opens as PDF | Planned |
 | TC-22 | UC-07 | Export Excel | GET /analytics/export/excel | Manager export action | reports | Backend integration xlsx Content-Type | Manual: file opens in spreadsheet app | Planned |
 | TC-23 | UC-08 | Admin creates category | POST /categories | Admin categories tab | categories | Backend integration returns 201 | Manual: create category | Planned |
@@ -294,7 +294,7 @@ Use these test classes and scopes:
 
 Each test must set up users, categories, reports, and tokens through repositories/services, then call controller/API using `MockMvc` or service-level methods. Assertions must check HTTP result and database side effects.
 
-**Incremental implementation status (updated 2026-05-26):**
+**Incremental implementation status (updated 2026-05-27):**
 
 | Test Case | Implemented Test Method | Coverage Boundary | Status |
 |---|---|---|---|
@@ -312,6 +312,7 @@ Each test must set up users, categories, reports, and tokens through repositorie
 | TC-12 | `ReportWorkflowIntegrationTest.tc12_staffRejectsNewReportAndRecordsStatusHistory` | Spring service/database integration asserting rejection transition and audit history with mocked outbound email | Implemented and passed |
 | TC-13 | `ReportWorkflowIntegrationTest.tc13_rejectionCreatesEmailAndInAppNotificationsForCitizen` | Spring service/database integration asserting persisted dual-channel notification rows with mocked outbound email | Implemented and passed |
 | TC-14 | `ReportWorkflowIntegrationTest.tc14_assignedStaffResolvesReportWithProofImageAndRecordsStatusHistory` | Spring service/database integration asserting assigned-staff resolution with mocked storage and outbound email | Implemented and passed |
+| TC-20 | `AnalyticsIntegrationTest.tc20_invalidDateRangeIsRejected` | Spring service integration asserting an inverted analytics date range is rejected before querying reports | Implemented and passed |
 
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` was confirmed passing by the developer on 2026-05-26 after adding `TC-04` and `TC-05`. This test class verifies valid report persistence with default `medium` priority, initial `status_history` persistence (`TC-06`), PostGIS rejection for a location outside HCMC, and rejection of an unknown category before storage interaction. HTTP authentication/multipart routing and real MinIO storage remain for later API/E2E coverage.
 
@@ -320,6 +321,8 @@ Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowInt
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` first reproduced the `TC-11` defect on 2026-05-26: 8 tests ran with one failure because review accepted a citizen as `assignedTo`. After adding staff-role validation in `ReportService.reviewReport`, the same command executed with 8 tests run, 0 failures, and 0 errors. This verifies a valid staff review transitions the report to `in_progress`, a second review is rejected, and a citizen assignee is rejected before report mutation.
 
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` executed on 2026-05-26 with 11 tests run, 0 failures, and 0 errors after adding `TC-12`, `TC-13`, and `TC-14`. This verifies rejection status/history persistence, rejected-report `email` and `in_app` notification records, and assigned-staff resolution with proof-image storage and resolution status history. Outbound email dispatch is mocked; resolution notification assertions remain scoped to `TC-17`.
+
+Verification evidence: `cd backend && ./mvnw clean test -Dtest=AnalyticsIntegrationTest` first reproduced the `TC-20` defect on 2026-05-27: 1 test ran with one failure because analytics accepted an inverted date range. After adding centralized date-order validation in `AnalyticsService`, `cd backend && ./mvnw clean test -Dtest=AnalyticsIntegrationTest,ReportWorkflowIntegrationTest` executed with 12 tests run, 0 failures, and 0 errors. This verifies invalid analytics date windows are rejected with `400 Bad Request` while preserving existing report workflow behavior.
 
 Verification evidence: `cd backend && ./mvnw test -Dtest=MinioStorageServiceTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies that an `application/pdf` incident image is rejected with `400 Bad Request` before any MinIO API interaction. HTTP multipart routing remains for later API/E2E coverage.
 
