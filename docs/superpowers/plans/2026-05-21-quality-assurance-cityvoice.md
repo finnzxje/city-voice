@@ -79,7 +79,7 @@ Create `docs/qa/traceability-matrix.md` with this structure:
 
 | TC | UC | Requirement | API | UI Surface | Data Tables | Automated Evidence | Manual Evidence | Status |
 |---|---|---|---|---|---|---|---|---|
-| TC-01 | UC-01 | Submit valid citizen report | POST /reports | Citizen submit client | reports, status_history, categories, administrative_zones | Backend integration: submit valid JPEG with HCMC coordinates | Manual: submit report from citizen UI | Planned |
+| TC-01 | UC-01 | Submit valid citizen report with default medium priority | POST /reports | Citizen submit client | reports, status_history, categories, administrative_zones | `ReportWorkflowIntegrationTest.tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory` | Manual: submit report from citizen UI | Implemented (service integration) |
 | TC-02 | UC-01 | Reject invalid image MIME | POST /reports | Citizen submit client | reports | Backend integration: PDF upload returns 4xx | Manual: upload PDF | Planned |
 | TC-03 | UC-01 | Reject oversized image | POST /reports | Citizen submit client | reports | Backend integration: >10MB multipart returns 413/4xx | Manual: upload >10MB file | Planned |
 | TC-04 | UC-01 | Reject coordinates outside HCMC | POST /reports | Citizen submit client | reports, administrative_zones | Backend integration with outside coordinate | Manual: submit outside coordinate | Planned |
@@ -156,6 +156,7 @@ Create `docs/qa/manual-test-checklist.md`:
 - [ ] Oversized image is rejected.
 - [ ] Outside-HCMC coordinate is rejected.
 - [ ] Created report appears with `newly_received`.
+- [ ] Created report starts with default priority `medium`.
 
 ## UC-02 Citizen Track Report
 
@@ -166,7 +167,7 @@ Create `docs/qa/manual-test-checklist.md`:
 ## UC-03 Staff Review And Assign
 
 - [ ] Staff sees newly received reports.
-- [ ] Staff can choose priority and assignee.
+- [ ] Staff can confirm or change priority and choose an assignee.
 - [ ] Successful review changes status to `in_progress`.
 - [ ] A second review attempt is blocked.
 - [ ] Assignment to a non-staff user is blocked.
@@ -290,6 +291,14 @@ Use these test classes and scopes:
 - `CategoryIntegrationTest`: TC-23 through TC-25.
 
 Each test must set up users, categories, reports, and tokens through repositories/services, then call controller/API using `MockMvc` or service-level methods. Assertions must check HTTP result and database side effects.
+
+**Incremental implementation status (updated 2026-05-26):**
+
+| Test Case | Implemented Test Method | Coverage Boundary | Status |
+|---|---|---|---|
+| TC-01 | `ReportWorkflowIntegrationTest.tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory` | Spring service/database integration with real PostgreSQL/PostGIS and mocked `StorageService` | Implemented and passed |
+
+Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies category lookup, HCMC boundary/district queries, report persistence with default `medium` priority, and initial `status_history` persistence. HTTP authentication/multipart routing and real MinIO storage remain for later API/E2E coverage.
 
 - [ ] **Step 4: Run backend tests**
 

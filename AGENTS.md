@@ -28,14 +28,14 @@ CityVoice is a civic infrastructure reporting platform scoped exclusively to **H
 - Before persisting, the backend validates:
   - Image payload: max file size + allowed MIME types.
   - GPS coordinates: must fall strictly within the **official HCMC administrative boundary** (`ST_Contains()` PostGIS query).
-- On success: report is created with status `newly_received`, image uploaded to Cloud Storage, confirmation returned.
+- On success: report is created with status `newly_received` and default priority `medium`, image uploaded to Cloud Storage, confirmation returned.
 
 ---
 
 ## Module 2: Workflow & Resolution Management (Staff Facing)
 
 - Staff review incoming reports for authenticity.
-- **Priority** (`low` / `medium` / `high` / `critical`) is set by **staff** during review — not by citizens on submission.
+- **Priority** (`low` / `medium` / `high` / `critical`) defaults to `medium` on citizen submission; **staff** confirm or change it during review.
 - Staff assign reports to a person/unit and transition to `in_progress`.
 - **State machine (strictly enforced — no skipping):**
   ```
