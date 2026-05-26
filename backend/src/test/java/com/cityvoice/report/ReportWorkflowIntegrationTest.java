@@ -1,6 +1,7 @@
 package com.cityvoice.report;
 
 import com.cityvoice.report.dto.ReportResponse;
+import com.cityvoice.report.dto.ReviewReportRequest;
 import com.cityvoice.report.dto.SubmitReportRequest;
 import com.cityvoice.report.entity.Category;
 import com.cityvoice.report.entity.Report;
@@ -152,11 +153,84 @@ class ReportWorkflowIntegrationTest {
                         exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
+    @Test
+    void tc09_staffReviewMovesNewReportToInProgressAndAssignsStaff() {
+        User citizen = newCitizen("TC-09 Citizen");
+        User staff = newUser("TC-09 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc09.jpg");
+
+        ReportResponse reviewedReport = reportService.reviewReport(
+                submittedReport.getId(),
+                reviewRequest(PriorityLevel.high, staff.getId(), "Assigned for inspection"),
+                staff);
+
+        assertThat(reviewedReport.getCurrentStatus()).isEqualTo(ReportStatus.in_progress.name());
+        assertThat(reviewedReport.getPriority()).isEqualTo(PriorityLevel.high.name());
+        assertThat(reviewedReport.getAssignedToId()).isEqualTo(staff.getId());
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.in_progress);
+        assertThat(savedReport.getPriority()).isEqualTo(PriorityLevel.high);
+        assertThat(savedReport.getAssignedTo().getId()).isEqualTo(staff.getId());
+        assertThat(statusHistoryFor(savedReport))
+                .anySatisfy(history -> {
+                    assertThat(history.getChangedBy().getId()).isEqualTo(staff.getId());
+                    assertThat(history.getFromStatus()).isEqualTo(ReportStatus.newly_received);
+                    assertThat(history.getToStatus()).isEqualTo(ReportStatus.in_progress);
+                    assertThat(history.getNote()).isEqualTo("Assigned for inspection");
+                });
+    }
+
+    @Test
+    void tc10_reportCannotBeReviewedAgainAfterItIsInProgress() {
+        User citizen = newCitizen("TC-10 Citizen");
+        User staff = newUser("TC-10 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc10.jpg");
+        ReviewReportRequest request = reviewRequest(PriorityLevel.medium, staff.getId(), "Initial review");
+        reportService.reviewReport(submittedReport.getId(), request, staff);
+
+        assertThatThrownBy(() -> reportService.reviewReport(submittedReport.getId(), request, staff))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.in_progress);
+        assertThat(statusHistoryFor(savedReport))
+                .filteredOn(history -> history.getToStatus() == ReportStatus.in_progress)
+                .hasSize(1);
+    }
+
+    @Test
+    void tc11_citizenCannotBeAssignedDuringStaffReview() {
+        User reportingCitizen = newCitizen("TC-11 Reporter");
+        User citizenAssignee = newCitizen("TC-11 Assignee");
+        User staff = newUser("TC-11 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(reportingCitizen, "tc11.jpg");
+
+        assertThatThrownBy(() -> reportService.reviewReport(
+                submittedReport.getId(),
+                reviewRequest(PriorityLevel.medium, citizenAssignee.getId(), "Invalid assignment"),
+                staff))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.newly_received);
+        assertThat(savedReport.getAssignedTo()).isNull();
+        assertThat(statusHistoryFor(savedReport))
+                .filteredOn(history -> history.getToStatus() == ReportStatus.in_progress)
+                .isEmpty();
+    }
+
     private User newCitizen(String caseId) {
+        return newUser(caseId, UserRole.citizen);
+    }
+
+    private User newUser(String caseId, UserRole role) {
         return userRepository.save(User.builder()
                 .email(caseId.toLowerCase() + "-" + UUID.randomUUID() + "@cityvoice.vn")
-                .fullName(caseId + " Citizen")
-                .role(UserRole.citizen)
+                .fullName(caseId)
+                .role(role)
                 .active(true)
                 .build());
     }
@@ -179,5 +253,19 @@ class ReportWorkflowIntegrationTest {
         when(storageService.store(any(), eq("incidents")))
                 .thenReturn("http://storage.test/cityvoice-reports/incidents/" + imageFileName);
         return reportService.submitReport(submissionRequest(category.getId(), 10.7769, 106.7009), citizen);
+    }
+
+    private ReviewReportRequest reviewRequest(PriorityLevel priority, UUID assignedTo, String note) {
+        ReviewReportRequest request = new ReviewReportRequest();
+        request.setPriority(priority);
+        request.setAssignedTo(assignedTo);
+        request.setNote(note);
+        return request;
+    }
+
+    private List<StatusHistory> statusHistoryFor(Report report) {
+        return statusHistoryRepository.findAll().stream()
+                .filter(history -> history.getReport().getId().equals(report.getId()))
+                .toList();
     }
 }
