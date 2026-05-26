@@ -1,5 +1,10 @@
 package com.cityvoice.report;
 
+import com.cityvoice.auth.service.EmailService;
+import com.cityvoice.notification.entity.Notification;
+import com.cityvoice.notification.enums.NotificationChannel;
+import com.cityvoice.notification.repository.NotificationRepository;
+import com.cityvoice.report.dto.RejectReportRequest;
 import com.cityvoice.report.dto.ReportResponse;
 import com.cityvoice.report.dto.ReviewReportRequest;
 import com.cityvoice.report.dto.SubmitReportRequest;
@@ -52,9 +57,13 @@ class ReportWorkflowIntegrationTest {
     private ReportRepository reportRepository;
     @Autowired
     private StatusHistoryRepository statusHistoryRepository;
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @MockitoBean
     private StorageService storageService;
+    @MockitoBean
+    private EmailService emailService;
 
     @Test
     void tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory() {
@@ -222,6 +231,92 @@ class ReportWorkflowIntegrationTest {
                 .isEmpty();
     }
 
+    @Test
+    void tc12_staffRejectsNewReportAndRecordsStatusHistory() {
+        User citizen = newCitizen("TC-12 Citizen");
+        User staff = newUser("TC-12 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc12.jpg");
+
+        ReportResponse rejectedReport = reportService.rejectReport(
+                submittedReport.getId(),
+                rejectRequest("Insufficient evidence"),
+                staff);
+
+        assertThat(rejectedReport.getCurrentStatus()).isEqualTo(ReportStatus.rejected.name());
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.rejected);
+        assertThat(statusHistoryFor(savedReport))
+                .anySatisfy(history -> {
+                    assertThat(history.getChangedBy().getId()).isEqualTo(staff.getId());
+                    assertThat(history.getFromStatus()).isEqualTo(ReportStatus.newly_received);
+                    assertThat(history.getToStatus()).isEqualTo(ReportStatus.rejected);
+                    assertThat(history.getNote()).isEqualTo("Insufficient evidence");
+                });
+    }
+
+    @Test
+    void tc13_rejectionCreatesEmailAndInAppNotificationsForCitizen() {
+        User citizen = newCitizen("TC-13 Citizen");
+        User staff = newUser("TC-13 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc13.jpg");
+
+        reportService.rejectReport(submittedReport.getId(), rejectRequest("Duplicate incident"), staff);
+
+        List<Notification> notifications = notificationRepository.findAll().stream()
+                .filter(notification -> notification.getReport().getId().equals(submittedReport.getId()))
+                .toList();
+        assertThat(notifications)
+                .hasSize(2)
+                .allSatisfy(notification -> {
+                    assertThat(notification.getRecipient().getId()).isEqualTo(citizen.getId());
+                    assertThat(notification.getType()).isEqualTo("report_rejected");
+                    assertThat(notification.getMessage()).contains("Duplicate incident");
+                    assertThat(notification.getSentAt()).isNotNull();
+                })
+                .extracting(Notification::getChannel)
+                .containsExactlyInAnyOrder(NotificationChannel.email, NotificationChannel.in_app);
+    }
+
+    @Test
+    void tc14_assignedStaffResolvesReportWithProofImageAndRecordsStatusHistory() {
+        User citizen = newCitizen("TC-14 Citizen");
+        User staff = newUser("TC-14 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc14.jpg");
+        reportService.reviewReport(
+                submittedReport.getId(),
+                reviewRequest(PriorityLevel.medium, staff.getId(), "Assigned"),
+                staff);
+        var proofImage = TestImages.jpeg("proofImage");
+        when(storageService.store(proofImage, "resolutions"))
+                .thenReturn("http://storage.test/cityvoice-reports/resolutions/tc14.jpg");
+
+        ReportResponse resolvedReport = reportService.resolveReport(
+                submittedReport.getId(),
+                proofImage,
+                "Work completed",
+                staff);
+
+        assertThat(resolvedReport.getCurrentStatus()).isEqualTo(ReportStatus.resolved.name());
+        assertThat(resolvedReport.getResolutionImageUrl())
+                .isEqualTo("http://storage.test/cityvoice-reports/resolutions/tc14.jpg");
+        assertThat(resolvedReport.getResolvedAt()).isNotNull();
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.resolved);
+        assertThat(savedReport.getResolutionImageUrl())
+                .isEqualTo("http://storage.test/cityvoice-reports/resolutions/tc14.jpg");
+        assertThat(savedReport.getResolvedAt()).isNotNull();
+        assertThat(statusHistoryFor(savedReport))
+                .anySatisfy(history -> {
+                    assertThat(history.getChangedBy().getId()).isEqualTo(staff.getId());
+                    assertThat(history.getFromStatus()).isEqualTo(ReportStatus.in_progress);
+                    assertThat(history.getToStatus()).isEqualTo(ReportStatus.resolved);
+                    assertThat(history.getNote()).isEqualTo("Work completed");
+                });
+        verify(storageService).store(proofImage, "resolutions");
+    }
+
     private User newCitizen(String caseId) {
         return newUser(caseId, UserRole.citizen);
     }
@@ -259,6 +354,12 @@ class ReportWorkflowIntegrationTest {
         ReviewReportRequest request = new ReviewReportRequest();
         request.setPriority(priority);
         request.setAssignedTo(assignedTo);
+        request.setNote(note);
+        return request;
+    }
+
+    private RejectReportRequest rejectRequest(String note) {
+        RejectReportRequest request = new RejectReportRequest();
         request.setNote(note);
         return request;
     }
