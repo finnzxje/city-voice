@@ -593,7 +593,20 @@ git commit -m "chore: add local QA quality gate"
 
 This task is intentionally the first execution slice. The authentication behavior already exists, so these are characterization/regression tests and are expected to pass when first added; no authentication implementation change is planned.
 
-- [ ] **Step 1: Add service regression tests for the documented citizen authentication contract**
+**Implementation status (updated 2026-05-26):**
+
+| Test Case | Implemented Test Method | Test Type | Status |
+|---|---|---|---|
+| AUTH-01 | `AuthServiceTest.registrationHashesCitizenPasswordAndSendsVerificationOtp` | White-box service unit test with mocks | Implemented and developer-verified |
+| AUTH-02 | `AuthServiceTest.verifiedCitizenCanLoginWithPassword` | White-box service unit test with mocks | Implemented and developer-verified |
+| AUTH-03 | `AuthServiceTest.verifiedCitizenCanRequestLoginOtp` | White-box service unit test with mocks | Implemented and developer-verified |
+| AUTH-04 | `AuthServiceTest.verifiedCitizenCanLoginWithOtp` | White-box service unit test with mocks | Implemented and developer-verified |
+| AUTH-05 | `AuthServiceTest.unverifiedCitizenCannotLoginWithPassword` | White-box service unit test with mocks | Implemented and developer-verified |
+| AUTH-06 | `AuthServiceTest.invalidLoginOtpDoesNotIssueTokens` | White-box service unit test with mocks | Implemented and developer-verified |
+
+Verification note: an initial `cd backend && ./mvnw test -Dtest=AuthServiceTest` run on 2026-05-26 completed with 6 tests run, 0 failures, and 0 errors. A later run exposed stale IDE-generated output missing Lombok-generated `User` methods; `./mvnw clean test -Dtest=AuthServiceTest` rebuilt valid Maven output and passed with 6 tests run, 0 failures, and 0 errors. The developer then confirmed that `./mvnw test -Dtest=AuthServiceTest` passes locally after the clean rebuild. Live HTTP black-box/E2E authentication testing remains planned.
+
+- [x] **Step 1: Add service regression tests for the documented citizen authentication contract**
 
 Create `backend/src/test/java/com/cityvoice/auth/service/AuthServiceTest.java`:
 
@@ -761,7 +774,7 @@ class AuthServiceTest {
 }
 ```
 
-- [ ] **Step 2: Run only the citizen authentication regression tests**
+- [x] **Step 2: Run only the citizen authentication regression tests**
 
 Run:
 
