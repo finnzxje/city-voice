@@ -176,6 +176,10 @@ public class ReportService {
                 User assignee = userRepository.findById(request.getAssignedTo())
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                                 "Người được giao không tồn tại trong hệ thống."));
+                if (assignee.getRole() != UserRole.staff) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                        "Người được giao phải là nhân viên xử lý.");
+                }
 
                 report.setPriority(request.getPriority());
                 report.setAssignedTo(assignee);
