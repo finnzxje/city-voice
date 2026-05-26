@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -315,6 +316,64 @@ class ReportWorkflowIntegrationTest {
                     assertThat(history.getNote()).isEqualTo("Work completed");
                 });
         verify(storageService).store(proofImage, "resolutions");
+    }
+
+    @Test
+    void tc16_nonAssignedStaffCannotResolveReport() {
+        User citizen = newCitizen("TC-16 Citizen");
+        User assignedStaff = newUser("TC-16 Assigned", UserRole.staff);
+        User otherStaff = newUser("TC-16 Other", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc16.jpg");
+        reportService.reviewReport(
+                submittedReport.getId(),
+                reviewRequest(PriorityLevel.medium, assignedStaff.getId(), "Assigned"),
+                assignedStaff);
+
+        assertThatThrownBy(() -> reportService.resolveReport(
+                submittedReport.getId(),
+                TestImages.jpeg("proofImage"),
+                "Unauthorized completion",
+                otherStaff))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getCurrentStatus()).isEqualTo(ReportStatus.in_progress);
+        assertThat(savedReport.getResolutionImageUrl()).isNull();
+        assertThat(savedReport.getResolvedAt()).isNull();
+        verify(storageService, never()).store(any(), eq("resolutions"));
+    }
+
+    @Test
+    void tc17_resolutionCreatesNotificationsAndResolvedTimestamp() {
+        User citizen = newCitizen("TC-17 Citizen");
+        User staff = newUser("TC-17 Staff", UserRole.staff);
+        ReportResponse submittedReport = submitValidReport(citizen, "tc17.jpg");
+        reportService.reviewReport(
+                submittedReport.getId(),
+                reviewRequest(PriorityLevel.medium, staff.getId(), "Assigned"),
+                staff);
+        var proofImage = TestImages.jpeg("proofImage");
+        when(storageService.store(proofImage, "resolutions"))
+                .thenReturn("http://storage.test/cityvoice-reports/resolutions/tc17.jpg");
+
+        reportService.resolveReport(submittedReport.getId(), proofImage, "Completed", staff);
+
+        Report savedReport = reportRepository.findById(submittedReport.getId()).orElseThrow();
+        assertThat(savedReport.getResolvedAt()).isNotNull();
+
+        List<Notification> notifications = notificationRepository.findAll().stream()
+                .filter(notification -> notification.getReport().getId().equals(submittedReport.getId()))
+                .toList();
+        assertThat(notifications)
+                .hasSize(2)
+                .allSatisfy(notification -> {
+                    assertThat(notification.getRecipient().getId()).isEqualTo(citizen.getId());
+                    assertThat(notification.getType()).isEqualTo("report_resolved");
+                    assertThat(notification.getSentAt()).isNotNull();
+                })
+                .extracting(Notification::getChannel)
+                .containsExactlyInAnyOrder(NotificationChannel.email, NotificationChannel.in_app);
     }
 
     private User newCitizen(String caseId) {

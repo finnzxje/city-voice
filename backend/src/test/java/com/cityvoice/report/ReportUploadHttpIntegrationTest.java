@@ -17,6 +17,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -58,6 +59,28 @@ class ReportUploadHttpIntegrationTest {
         verifyNoInteractions(storageService);
     }
 
+    @Test
+    void tc15_resolveWithoutProofImageIsRejectedBeforeStorageUpload() throws Exception {
+        User staff = userRepository.findByEmail("staff@cityvoice.vn").orElseThrow();
+        String boundary = "cityvoice-tc15-boundary";
+        byte[] requestBody = noteOnlyMultipart(boundary);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:" + port + "/api/reports/"
+                        + UUID.randomUUID() + "/resolve"))
+                .header("Authorization", "Bearer " + jwtUtil.generateAccessToken(staff))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
+                .build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(response.body()).contains("\"code\":400");
+        verifyNoInteractions(storageService);
+    }
+
     private byte[] oversizedJpegMultipart(String boundary) {
         byte[] prefix = ("--" + boundary + "\r\n"
                 + "Content-Disposition: form-data; name=\"image\"; filename=\"oversized.jpg\"\r\n"
@@ -70,5 +93,12 @@ class ReportUploadHttpIntegrationTest {
         System.arraycopy(fileContent, 0, body, prefix.length, fileContent.length);
         System.arraycopy(suffix, 0, body, prefix.length + fileContent.length, suffix.length);
         return body;
+    }
+
+    private byte[] noteOnlyMultipart(String boundary) {
+        return ("--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"note\"\r\n\r\n"
+                + "Resolved without evidence\r\n"
+                + "--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8);
     }
 }
