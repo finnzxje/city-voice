@@ -81,7 +81,7 @@ Create `docs/qa/traceability-matrix.md` with this structure:
 |---|---|---|---|---|---|---|---|---|
 | TC-01 | UC-01 | Submit valid citizen report with default medium priority | POST /reports | Citizen submit client | reports, status_history, categories, administrative_zones | `ReportWorkflowIntegrationTest.tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory` | Manual: submit report from citizen UI | Implemented (service integration) |
 | TC-02 | UC-01 | Reject invalid image MIME | POST /reports | Citizen submit client | reports | `MinioStorageServiceTest.tc02_pdfImageIsRejectedBeforeObjectStorageUpload` | Manual: upload PDF | Implemented (storage validation) |
-| TC-03 | UC-01 | Reject oversized image | POST /reports | Citizen submit client | reports | Backend integration: >10MB multipart returns 413/4xx | Manual: upload >10MB file | Planned |
+| TC-03 | UC-01 | Reject oversized image | POST /reports | Citizen submit client | reports | `ReportUploadHttpIntegrationTest.tc03_imageLargerThanTenMegabytesIsRejectedBeforeStorageUpload` | Manual: upload >10MB file | Implemented (HTTP integration) |
 | TC-04 | UC-01 | Reject coordinates outside HCMC | POST /reports | Citizen submit client | reports, administrative_zones | Backend integration with outside coordinate | Manual: submit outside coordinate | Planned |
 | TC-05 | UC-01 | Reject unknown category | POST /reports | Citizen submit client | categories, reports | Backend integration with missing categoryId | Manual: tampered categoryId | Planned |
 | TC-06 | UC-01 | Create initial status history | POST /reports | Not directly visible; report detail activity | reports, status_history | Repository assertion after TC-01 | Manual: inspect activity log or DB | Planned |
@@ -229,6 +229,7 @@ Expected: checklist available for demos and regression runs.
 - Create: `backend/src/test/java/com/cityvoice/testsupport/TestUsers.java`
 - Create: `backend/src/test/java/com/cityvoice/testsupport/TestImages.java`
 - Create: `backend/src/test/java/com/cityvoice/report/ReportWorkflowIntegrationTest.java`
+- Create: `backend/src/test/java/com/cityvoice/report/ReportUploadHttpIntegrationTest.java`
 - Create: `backend/src/test/java/com/cityvoice/storage/MinioStorageServiceTest.java`
 - Create: `backend/src/test/java/com/cityvoice/analytics/AnalyticsIntegrationTest.java`
 - Create: `backend/src/test/java/com/cityvoice/report/CategoryIntegrationTest.java`
@@ -299,10 +300,13 @@ Each test must set up users, categories, reports, and tokens through repositorie
 |---|---|---|---|
 | TC-01 | `ReportWorkflowIntegrationTest.tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory` | Spring service/database integration with real PostgreSQL/PostGIS and mocked `StorageService` | Implemented and passed |
 | TC-02 | `MinioStorageServiceTest.tc02_pdfImageIsRejectedBeforeObjectStorageUpload` | Storage component validation with real `MinioStorageService` and mocked MinIO client | Implemented and passed |
+| TC-03 | `ReportUploadHttpIntegrationTest.tc03_imageLargerThanTenMegabytesIsRejectedBeforeStorageUpload` | Real HTTP multipart request through embedded Tomcat using configured 10 MB limit and mocked `StorageService` | Implemented and passed |
 
 Verification evidence: `cd backend && ./mvnw clean test -Dtest=ReportWorkflowIntegrationTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies category lookup, HCMC boundary/district queries, report persistence with default `medium` priority, and initial `status_history` persistence. HTTP authentication/multipart routing and real MinIO storage remain for later API/E2E coverage.
 
 Verification evidence: `cd backend && ./mvnw test -Dtest=MinioStorageServiceTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies that an `application/pdf` incident image is rejected with `400 Bad Request` before any MinIO API interaction. HTTP multipart routing remains for later API/E2E coverage.
+
+Verification evidence: `cd backend && ./mvnw test -Dtest=ReportUploadHttpIntegrationTest` executed on 2026-05-26 with 1 test run, 0 failures, and 0 errors. This verifies that an authenticated HTTP multipart request containing an incident image over 10 MB is rejected with `413 Payload Too Large` by the embedded servlet-container path before any storage interaction.
 
 - [ ] **Step 4: Run backend tests**
 
