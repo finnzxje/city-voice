@@ -19,17 +19,21 @@ import com.cityvoice.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
@@ -53,23 +57,12 @@ class ReportWorkflowIntegrationTest {
 
     @Test
     void tc01_validCitizenReportCreatesNewlyReceivedMediumPriorityReportAndInitialHistory() {
-        User citizen = userRepository.save(User.builder()
-                .email("tc01-" + UUID.randomUUID() + "@cityvoice.vn")
-                .fullName("TC-01 Citizen")
-                .role(UserRole.citizen)
-                .active(true)
-                .build());
+        User citizen = newCitizen("TC-01");
         Category category = categoryRepository.findAllByIsActiveTrue().stream()
                 .findFirst()
                 .orElseThrow();
 
-        SubmitReportRequest request = new SubmitReportRequest();
-        request.setTitle("Pothole on Nguyen Hue Boulevard");
-        request.setDescription("Large pothole causing traffic disruption near Quan 1");
-        request.setCategoryId(category.getId());
-        request.setLatitude(10.7769);
-        request.setLongitude(106.7009);
-        request.setImage(TestImages.jpeg("image"));
+        SubmitReportRequest request = submissionRequest(category.getId(), 10.7769, 106.7009);
         when(storageService.store(any(), eq("incidents")))
                 .thenReturn("http://storage.test/cityvoice-reports/incidents/tc01.jpg");
 
@@ -98,5 +91,58 @@ class ReportWorkflowIntegrationTest {
             assertThat(history.getToStatus()).isEqualTo(ReportStatus.newly_received);
         });
         verify(storageService).store(request.getImage(), "incidents");
+    }
+
+    @Test
+    void tc04_coordinatesOutsideHcmcAreRejectedBeforeStorageUpload() {
+        User citizen = newCitizen("TC-04");
+        Category category = categoryRepository.findAllByIsActiveTrue().stream()
+                .findFirst()
+                .orElseThrow();
+        long reportCount = reportRepository.count();
+
+        SubmitReportRequest request = submissionRequest(category.getId(), 21.0278, 105.8342);
+
+        assertThatThrownBy(() -> reportService.submitReport(request, citizen))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(reportRepository.count()).isEqualTo(reportCount);
+        verifyNoInteractions(storageService);
+    }
+
+    @Test
+    void tc05_unknownCategoryIsRejectedBeforeStorageUpload() {
+        User citizen = newCitizen("TC-05");
+        long reportCount = reportRepository.count();
+
+        SubmitReportRequest request = submissionRequest(Integer.MAX_VALUE, 10.7769, 106.7009);
+
+        assertThatThrownBy(() -> reportService.submitReport(request, citizen))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(reportRepository.count()).isEqualTo(reportCount);
+        verifyNoInteractions(storageService);
+    }
+
+    private User newCitizen(String caseId) {
+        return userRepository.save(User.builder()
+                .email(caseId.toLowerCase() + "-" + UUID.randomUUID() + "@cityvoice.vn")
+                .fullName(caseId + " Citizen")
+                .role(UserRole.citizen)
+                .active(true)
+                .build());
+    }
+
+    private SubmitReportRequest submissionRequest(Integer categoryId, double latitude, double longitude) {
+        SubmitReportRequest request = new SubmitReportRequest();
+        request.setTitle("Pothole on Nguyen Hue Boulevard");
+        request.setDescription("Large pothole causing traffic disruption near Quan 1");
+        request.setCategoryId(categoryId);
+        request.setLatitude(latitude);
+        request.setLongitude(longitude);
+        request.setImage(TestImages.jpeg("image"));
+        return request;
     }
 }
