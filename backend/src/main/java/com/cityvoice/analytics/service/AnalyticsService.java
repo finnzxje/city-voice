@@ -21,8 +21,10 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.persistence.criteria.Predicate;
 import java.awt.Color;
@@ -75,6 +77,10 @@ public class AnalyticsService {
     }
 
     private List<Report> fetchFiltered(AnalyticsFilterRequest filter) {
+        if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Ngày bắt đầu không được sau ngày kết thúc.");
+        }
         return reportRepository.findAll(buildSpec(filter));
     }
 

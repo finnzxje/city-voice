@@ -70,7 +70,7 @@ Content-Type: multipart/form-data
 2. **Location Validation:** PostGIS checks if `(longitude, latitude)` falls inside the HCMC boundary.
 3. **District Resolution:** PostGIS maps the point to a specific District (Administrative Zone).
 4. **Storage:** The image is uploaded to MinIO bucket; a public URL is generated.
-5. **Database:** The `Report` is saved in the database with status `newly_received`.
+5. **Database:** The `Report` is saved in the database with status `newly_received` and default priority `medium`.
 6. **Audit:** A `StatusHistory` record is created logging the citizen's submission.
 
 ### Responses
@@ -116,6 +116,7 @@ Authorization: Bearer <validToken>
     "administrativeZoneName": "Quận 1",
     "incidentImageUrl": "http://localhost:9000/cityvoice-reports/...",
     "currentStatus": "newly_received",
+    "priority": "medium",
     "createdAt": "2026-03-08T12:00:00Z"
   }
 }
@@ -196,6 +197,7 @@ Content-Type: application/json
 ```
 
 **Transitions:** `newly_received → in_progress`  
+**Priority:** A submitted report starts at `medium`; staff confirm or replace that priority during review.  
 **Returns:** `200` with updated `ReportResponse` or `400` if report is not in `newly_received`.
 
 ---

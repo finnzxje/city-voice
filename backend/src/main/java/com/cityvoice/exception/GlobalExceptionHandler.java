@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -102,6 +103,16 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.badRequest()
                                 .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
                                                 "Yêu cầu multipart không hợp lệ hoặc luồng tệp bị gián đoạn."));
+        }
+
+        @ExceptionHandler(MissingServletRequestPartException.class)
+        public ResponseEntity<ApiResponse<Object>> handleMissingMultipartPart(
+                        MissingServletRequestPartException ex, HttpServletRequest request) {
+                log.debug("[{}] {} → 400 Missing multipart part: {}", request.getMethod(), request.getRequestURI(),
+                                ex.getRequestPartName());
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(),
+                                                "Thiếu phần dữ liệu bắt buộc: " + ex.getRequestPartName()));
         }
 
         // ── Malformed JSON body ───────────────────────────────────────────────────
