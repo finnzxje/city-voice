@@ -382,7 +382,7 @@ export default function StaffReportDetails() {
                   <CheckSquare className="h-5 w-5" />
                   Nghiệm thu (Resolve)
                 </h3>
-                
+
                 {user && (user.id === report.assignedToId || user.role === 'admin') ? (
                   <>
                     <p className="text-xs text-[#00174c] mb-2 font-medium relative z-10">Vui lòng tải lên hình ảnh sau khi đã hoàn thành việc sửa chữa hiện trường.</p>

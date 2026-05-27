@@ -36,14 +36,14 @@ const Hero = () => (
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="lg:col-span-5 relative"
             >
-                <div className="relative w-full aspect-[4/5] rounded-[4rem] overflow-hidden shadow-2xl border border-white">
+                <div className="relative w-full aspect-4/5 rounded-[4rem] overflow-hidden shadow-2xl border border-white">
                     <img
                         alt="Modern City Life"
                         className="w-full h-full object-cover"
                         src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&q=80&w=1000"
                         referrerPolicy="no-referrer"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
+                    <div className="absolute inset-0 bg-linear-to-t from-primary/20 to-transparent"></div>
                 </div>
 
                 {/* Floating Card */}
@@ -68,7 +68,7 @@ const Hero = () => (
         </div>
 
         {/* Abstract background shape */}
-        <div className="absolute top-0 right-0 -z-10 w-1/2 h-full bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-[200px]"></div>
+        <div className="absolute top-0 right-0 -z-10 w-1/2 h-full bg-linear-to-bl from-primary/5 to-transparent rounded-bl-[200px]"></div>
     </section>
 );
 export default Hero;
